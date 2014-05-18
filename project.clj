@@ -1,2 +1,2 @@
-(defproject kukui "0.0.1"
-  :dependencies [[org.clojure/clojure "1.5.1"]])
+(defproject kukui "0.1.0-pre"
+  :dependencies [[org.clojure/clojure "1.6.0"]])
