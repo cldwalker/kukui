@@ -1,2 +1,1 @@
-{:+ {:app [(:lt.objs.plugins/load-js "kukui_compiled.js")]
-     :kukui.hello [:lt.plugins.kukui/on-close-destroy]}}
+{:+ {:app [(:lt.objs.plugins/load-js "kukui_compiled.js")]}}

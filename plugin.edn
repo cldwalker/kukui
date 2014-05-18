@@ -1,6 +1,6 @@
 {:name "kukui"
- :version "0.0.1"
- :author ""
- :source ""
+ :version "0.1.0-pre"
+ :author "Gabriel Horner"
+ :source "https://github.com/cldwalker/kukui"
  :desc ""
  :behaviors "kukui.behaviors"}
