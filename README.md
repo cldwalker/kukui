@@ -4,6 +4,10 @@
 in an outline, grouping tags and then switching to a new view based on those groups. The goal is to facilitate
 insight into an outline as its being created. kukui depends on [sacha](https://github.com/cldwalker/sacha) for outlining. kukui means light or enlightenment in hawaiian.
 
+## Install
+
+Git clone this project to your LT plugins directory. There will eventually be a release to the plugins repository when the ideas are mature enough.
+
 
 ## Usage
 TODO
