@@ -304,13 +304,13 @@
                       (let [ed (pool/last-active)]
                         (util/insert-at-next-line ed (->view ed (keyword (:name type))))))})
 
-;; TODO: require non-nil query
 (defn ->query-view
   "Create a view given a query. There are two formats.
   With parent:    #type: tag1, tag2
   Without parent: tag1, tag2"
   ([ed query] (->query-view ed query 1))
   ([ed query indent-level]
+   {:pre [(seq query)]}
    (let [tags-string (-> (re-find #"^\s*(\S+:|)\s*(.*)$" query) (get 2))
          tags (when tags-string (s/split tags-string #"\s*,\s*"))
          view-config {:names (conj tags "leftover") :default "leftover"}]
