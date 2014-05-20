@@ -304,6 +304,14 @@
                       (let [ed (pool/last-active)]
                         (util/insert-at-next-line ed (->view ed (keyword (:name type))))))})
 
+(defn expand-tag
+  "Expands a tag if it's a type"
+  [types-config tag]
+  (if (contains? (set (keys (:types types-config)))
+                 (keyword tag))
+    (get-in types-config [:types (keyword tag) :names])
+    [tag]))
+
 (defn ->query-view
   "Create a view given a query. There are two formats.
   With parent:    #type: tag1, tag2
@@ -313,6 +321,8 @@
    {:pre [(seq query)]}
    (let [tags-string (-> (re-find #"^\s*(\S+:|)\s*(.*)$" query) (get 2))
          tags (when tags-string (s/split tags-string #"\s*,\s*"))
+         ;; TODO: move hardcoded config
+         tags (mapcat (partial expand-tag config) tags)
          view-config (->view-fn tags)]
      (->view ed view-config indent-level))))
 
@@ -334,7 +344,7 @@
 (defn find-parent-line [ed line]
   (c/find-parent ed (range (dec line) -1 -1) (c/line-indent ed line)))
 
-;; TODO: remove query line from results
+;; consider removing query line from results
 (cmd/command {:command :kukui.query-insert-children
               :desc "kukui: inserts current children based on parent node's query"
               :exec (fn []
