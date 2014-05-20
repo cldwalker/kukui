@@ -1,5 +1,5 @@
 (ns lt.plugins.kukui
-  "Experimental extensions to sacha"
+  "Experiments in outlining and semantic tagging"
   (:require [lt.objs.command :as cmd]
             [lt.objs.editor.pool :as pool]
             [lt.objs.editor :as editor]
@@ -304,24 +304,45 @@
                       (let [ed (pool/last-active)]
                         (util/insert-at-next-line ed (->view ed (keyword (:name type))))))})
 
+;; TODO: require non-nil query
 (defn ->query-view
   "Create a view given a query. There are two formats.
   With parent:    #type: tag1, tag2
   Without parent: tag1, tag2"
-  [ed query]
-  (let [tags-string (-> (re-find #"^\s*(\S+:|)\s*(.*)$" query) (get 2))
-        tags (when tags-string (s/split tags-string #"\s*,\s*"))
-        view-config {:names (conj tags "leftover") :default "leftover"}]
-    (->view ed view-config)))
+  ([ed query] (->query-view ed query 1))
+  ([ed query indent-level]
+   (let [tags-string (-> (re-find #"^\s*(\S+:|)\s*(.*)$" query) (get 2))
+         tags (when tags-string (s/split tags-string #"\s*,\s*"))
+         view-config {:names (conj tags "leftover") :default "leftover"}]
+     (->view ed view-config indent-level))))
 
 (cmd/command {:command :kukui.query-replace-children
               :desc "kukui: replaces current children based on current node's query"
               :exec (fn []
                       (let [ed (pool/last-active)
-                            end-line (c/safe-next-non-child-line ed (.-line (editor/cursor ed)))]
-                        (let [line (:line (editor/->cursor ed))
-                              new-body (->query-view ed (editor/line ed line))]
-                             (editor/replace (editor/->cm-ed ed)
-                                             {:line (inc line) :ch 0}
-                                             {:line end-line :ch 0}
-                                             new-body))))})
+                            line (.-line (editor/cursor ed))
+                            end-line (c/safe-next-non-child-line ed line)
+                            new-body (->query-view ed (editor/line ed line))]
+                        (editor/replace (editor/->cm-ed ed)
+                                        {:line (inc line) :ch 0}
+                                        {:line end-line :ch 0}
+                                        new-body)))})
+
+;; consider moving to sacha
+(defn find-parent-line [ed line]
+  (c/find-parent ed (range (dec line) -1 -1) (c/line-indent ed line)))
+
+;; TODO: remove query line from results
+(cmd/command {:command :kukui.query-insert-children
+              :desc "kukui: inserts current children based on parent node's query"
+              :exec (fn []
+                      (let [ed (pool/last-active)
+                            line (.-line (editor/cursor ed))
+                            parent-line (find-parent-line ed line)
+                            ;; TODO: handle no parent
+                            end-line (c/safe-next-non-child-line ed parent-line)
+                            ;; move for ->view, consider adding lines arg to ->query-view and ->view
+                            _ (editor/move-cursor ed {:line parent-line})
+                            new-body (->query-view ed (editor/line ed line) 2)]
+                        (editor/move-cursor ed {:line line})
+                        (util/insert-at-next-line ed new-body)))})
