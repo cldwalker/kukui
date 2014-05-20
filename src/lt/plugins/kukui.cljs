@@ -308,12 +308,12 @@
   "Create a view given a query. There are two formats.
   With parent:    #type: tag1, tag2
   Without parent: tag1, tag2"
-  ([ed query] (->query-view ed query 1))
-  ([ed query indent-level]
+  ([ed query ->view-fn] (->query-view ed query ->view-fn 1))
+  ([ed query ->view-fn indent-level]
    {:pre [(seq query)]}
    (let [tags-string (-> (re-find #"^\s*(\S+:|)\s*(.*)$" query) (get 2))
          tags (when tags-string (s/split tags-string #"\s*,\s*"))
-         view-config {:names (conj tags "leftover") :default "leftover"}]
+         view-config (->view-fn tags)]
      (->view ed view-config indent-level))))
 
 (cmd/command {:command :kukui.query-replace-children
@@ -322,7 +322,9 @@
                       (let [ed (pool/last-active)
                             line (.-line (editor/cursor ed))
                             end-line (c/safe-next-non-child-line ed line)
-                            new-body (->query-view ed (editor/line ed line))]
+                            new-body (->query-view ed (editor/line ed line)
+                                                   #(hash-map :names (conj % "leftover")
+                                                              :default "leftover"))]
                         (editor/replace (editor/->cm-ed ed)
                                         {:line (inc line) :ch 0}
                                         {:line end-line :ch 0}
@@ -343,6 +345,6 @@
                             end-line (c/safe-next-non-child-line ed parent-line)
                             ;; move for ->view, consider adding lines arg to ->query-view and ->view
                             _ (editor/move-cursor ed {:line parent-line})
-                            new-body (->query-view ed (editor/line ed line) 2)]
+                            new-body (->query-view ed (editor/line ed line) #(hash-map :names %) 2)]
                         (editor/move-cursor ed {:line line})
                         (util/insert-at-next-line ed new-body)))})
