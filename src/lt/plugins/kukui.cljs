@@ -226,8 +226,8 @@
 (defn ->view
   "Creates a view given a type or a view config and the editor (branch) to use. A view
   pivots the current branch by changing the parents of a branch."
-  [ed type-or-view & {:keys [level query-tag] :or {level 1} :as opts}]
-  (let [nodes (ed->nodes ed)
+  [ed type-or-view & {:keys [level query-tag lines] :or {level 1}}]
+  (let [nodes (ed->nodes ed lines)
         nodes (if query-tag
                 (filter #(contains? (set (:tags %)) query-tag) nodes)
                 nodes)
@@ -318,7 +318,7 @@
   "Create a view given a query. There are two formats.
   With parent:    #type: tag1, tag2
   Without parent: tag1, tag2"
-  [ed query & {:keys [level view-fn types-config]
+  [ed query & {:keys [level view-fn types-config lines]
                :or {level 1
                     view-fn #(hash-map :names %)}}]
    {:pre [(seq query)]}
@@ -331,7 +331,8 @@
          tags (when tags-string (s/split tags-string #"\s*,\s*"))
          tags (mapcat (partial expand-tag types-config) tags)
          view-config (view-fn tags)]
-     (->view ed view-config :level level :query-tag query-tag)))
+     (->view ed view-config
+             :level level :query-tag query-tag :lines lines)))
 
 (cmd/command {:command :kukui.query-replace-children
               :desc "kukui: replaces current children based on current node's query"
@@ -360,12 +361,9 @@
                             parent-line (find-parent-line ed line)
                             ;; TODO: handle no parent
                             end-line (c/safe-next-non-child-line ed parent-line)
-                            ;; move for ->view, consider adding lines arg to ->query-view and ->view
-                            _ (editor/move-cursor ed {:line parent-line})
                             new-body (->query-view ed (editor/line ed line)
-                                                   :level 2
-                                                   :types-config config)]
-                        (editor/move-cursor ed {:line line})
+                                                   :types-config config
+                                                   :lines (range parent-line end-line))]
                         (if (s/blank? new-body)
                           (notifos/set-msg! (str "No results for '" (editor/line ed line) "'"))
                           (util/insert-at-next-line ed new-body))))})
