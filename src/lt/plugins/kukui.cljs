@@ -366,4 +366,6 @@
                                                    :level 2
                                                    :types-config config)]
                         (editor/move-cursor ed {:line line})
-                        (util/insert-at-next-line ed new-body)))})
+                        (if (s/blank? new-body)
+                          (notifos/set-msg! (str "No results for '" (editor/line ed line) "'"))
+                          (util/insert-at-next-line ed new-body))))})
