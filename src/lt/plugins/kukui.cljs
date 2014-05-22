@@ -180,6 +180,11 @@
                    (:desc %))))
      nodes)))
 
+
+(defn add-tags-to-node [node tags]
+  (update-in node [:text] str
+             (s/join (map #(str " " tag-prefix %) tags))))
+
 (defn save-tags
   "Saves tags to node's text in order to not lose tags when switching views."
   [tags-nodes]
@@ -190,8 +195,7 @@
               (let [tags-to-add (cset/difference (set (:tags node))
                                                  #{tag}
                                                  (set (text->tags (:text node))))]
-                (update-in node [:text] str
-                           (s/join (map #(str " " tag-prefix %) tags-to-add)))))
+                (add-tags-to-node node tags-to-add)))
             nodes)))
    {}
    tags-nodes))
@@ -265,21 +269,43 @@
            (notifos/set-msg! "Before and after type counts not equal. Please submit your outline as an issue." {:class "error"})
            (println "BEFORE: " before-replace-counts "\nAFTER: " after-replace-counts)))))
 
+(defn stamp-nodes
+  "Stamp children nodes with parent tags"
+  [ed]
+  (let [level 0
+        nodes (ed->nodes ed)
+        parent-tags (text->tags (editor/line ed (.-line (editor/cursor ed))))
+        new-nodes (map #(add-tags-to-node % parent-tags) nodes)
+        indented-nodes (indent-nodes new-nodes
+                                     (c/line-indent ed (.-line (editor/cursor ed)))
+                                     (editor/option ed "tabSize")
+                                     level)]
+    (str (s/join "\n" indented-nodes) "\n")))
+
+(defn replace-children [ed view-fn]
+  (let [end-line (c/safe-next-non-child-line ed (.-line (editor/cursor ed)))]
+    (check-types-counts
+     ed
+     (fn []
+       (let [new-body (view-fn ed)]
+         (editor/replace (editor/->cm-ed ed)
+                         {:line (inc (:line (editor/->cursor ed))) :ch 0}
+                         {:line end-line :ch 0}
+                         new-body)
+         new-body)))))
+
 (cmd/command {:command :kukui.type-replace-children
               :desc "kukui: replaces current children with new type view"
               :options type-selector
               :exec (fn [type]
-                      (let [ed (pool/last-active)
-                            end-line (c/safe-next-non-child-line ed (.-line (editor/cursor ed)))]
-                        (check-types-counts
-                         ed
-                         (fn []
-                           (let [new-body (->view ed (keyword (:name type)))]
-                             (editor/replace (editor/->cm-ed ed)
-                                             {:line (inc (:line (editor/->cursor ed))) :ch 0}
-                                             {:line end-line :ch 0}
-                                             new-body)
-                             new-body)))))})
+                      (replace-children (pool/last-active)
+                                        #(->view % (keyword (:name type)))))})
+
+(cmd/command {:command :kukui.stamp-children
+              :desc "kukui: stamps current children with parent tags"
+              :exec (fn []
+                      (replace-children (pool/last-active)
+                                        stamp-nodes))})
 
 (cmd/command {:command :kukui.type-replace-branch
               :desc "kukui: replaces current branch with new type view"
