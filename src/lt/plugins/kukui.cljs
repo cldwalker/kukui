@@ -226,25 +226,27 @@
 (defn ->view
   "Creates a view given a type or a view config and the editor (branch) to use. A view
   pivots the current branch by changing the parents of a branch."
-  ([ed type-or-view] (->view ed type-or-view 1))
-  ([ed type-or-view indent-level]
-   (let [nodes (ed->nodes ed)
-         view-config (if (map? type-or-view)
-                       type-or-view
-                       (get-in (dynamic-config nodes) [:types type-or-view]))
-         tags-nodes (type-map view-config nodes)
-         tags-nodes (ensure-unique-nodes tags-nodes)
-         tags-nodes (save-tags tags-nodes)
-         new-nodes (mapcat
-                    (fn [tag]
-                      (when-let [children (get tags-nodes tag)]
-                        (into [{:type-tag true :text (str tag-prefix (name tag))}] children)))
-                    (:names view-config))
-         indented-nodes (indent-nodes new-nodes
-                                      (c/line-indent ed (.-line (editor/cursor ed)))
-                                      (editor/option ed "tabSize")
-                                      indent-level)]
-     (str (s/join "\n" indented-nodes) "\n"))))
+  [ed type-or-view & {:keys [level query-tag] :or {level 1} :as opts}]
+  (let [nodes (ed->nodes ed)
+        nodes (if query-tag
+                (filter #(contains? (set (:tags %)) query-tag) nodes)
+                nodes)
+        view-config (if (map? type-or-view)
+                      type-or-view
+                      (get-in (dynamic-config nodes) [:types type-or-view]))
+        tags-nodes (type-map view-config nodes)
+        tags-nodes (ensure-unique-nodes tags-nodes)
+        tags-nodes (save-tags tags-nodes)
+        new-nodes (mapcat
+                   (fn [tag]
+                     (when-let [children (get tags-nodes tag)]
+                       (into [{:type-tag true :text (str tag-prefix (name tag))}] children)))
+                   (:names view-config))
+        indented-nodes (indent-nodes new-nodes
+                                     (c/line-indent ed (.-line (editor/cursor ed)))
+                                     (editor/option ed "tabSize")
+                                     level)]
+    (str (s/join "\n" indented-nodes) "\n")))
 
 (def type-selector
   (selector/selector {:items (fn []
@@ -289,7 +291,7 @@
                         (check-types-counts
                          ed
                          (fn []
-                           (let [new-body (->view ed (keyword (:name type)) 0)]
+                           (let [new-body (->view ed (keyword (:name type)) :level 0)]
                              (editor/replace (editor/->cm-ed ed)
                                              {:line (:line (editor/->cursor ed)) :ch 0}
                                              {:line end-line :ch 0}
@@ -317,14 +319,19 @@
   With parent:    #type: tag1, tag2
   Without parent: tag1, tag2"
   ([ed query ->view-fn] (->query-view ed query ->view-fn 1))
-  ([ed query ->view-fn indent-level]
+  ([ed query ->view-fn level]
    {:pre [(seq query)]}
-   (let [tags-string (-> (re-find #"^\s*(\S+:|)\s*(.*)$" query) (get 2))
+   (let [[_ query-tag tags-string] (re-find #"^\s*(\S+:|)\s*(.*)$" query)
+         query-tag (if (seq query-tag)
+                     (s/replace query-tag
+                                (re-pattern (str "^" tag-prefix "|:$"))
+                                "")
+                     nil)
          tags (when tags-string (s/split tags-string #"\s*,\s*"))
          ;; TODO: move hardcoded config
          tags (mapcat (partial expand-tag config) tags)
          view-config (->view-fn tags)]
-     (->view ed view-config indent-level))))
+     (->view ed view-config :level level :query-tag query-tag))))
 
 (cmd/command {:command :kukui.query-replace-children
               :desc "kukui: replaces current children based on current node's query"
