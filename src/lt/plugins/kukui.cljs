@@ -20,6 +20,7 @@
          (not (desc-node? next)))))
 
 (def tag-prefix "#")
+(def default-tag-char "*")
 
 ;; This regex returns pairs of matches but only the latter is useful. This
 ;; is a necessary evil caused by no negative-lookbehind in JS
@@ -27,7 +28,7 @@
   "Regex for pulling out tags with tag-prefix. To escape having a tag parsed,
   put a backslash before it e.g. \\#escaped"
   (re-pattern (str "(?:[^\\\\]|^)"
-                   "(" tag-prefix "[^ \\t\\n:.,;]+" ")")))
+                   "(" tag-prefix "[^ \\t\\n:.,;\\*]+" ")")))
 
 (defn text->tags [text]
   (map
@@ -337,21 +338,25 @@
     [tag]))
 
 (defn text->tag-group
-  "Used by query view and config to associate a parent tag (type) with its tags"
-  [text]
+  "Used by query view and config to associate a parent tag (type) with its tags.
+  To specify a default tag use an asterisk after a tag. For example:
+  #type: tag1, tag2*"
+  [types-config text]
+  {:pre [(seq text)]}
   (let [[_ parent-tag tags-string] (re-find #"^\s*(\S+:|)\s*(.*)$" text)
         parent-tag (if (seq parent-tag) (first (text->tags parent-tag)) nil)
+        raw-tags (s/split tags-string #"\s*,\s*")
+        default-tag (some->
+                     (some #(when (= default-tag-char (subs % (dec (count %))))
+                              %) raw-tags)
+                     (#(str tag-prefix (subs % 0 (dec (count %)))))
+                     text->tags
+                     first)
         tags (when tags-string
                (text->tags (s/join " "
-                                   (map #(str tag-prefix %) (s/split tags-string #"\s*,\s*")))))
+                                   (map #(str tag-prefix %) raw-tags))))
         tags (mapcat (partial expand-tag types-config) tags)]
-    {:parent-tag parent-tag :tags tags}))
-
-
-;; (as-> (text->tag-group "#type: tag1, tag2;")
-;;       group
-;;       {(keyword (:parent-tag group))
-;;        {:names (:tags group)}}))
+    {:parent-tag parent-tag :tags tags :default-tag default-tag}))
 
 (defn ->query-view
   "Create a view given a query. There are two formats.
@@ -360,18 +365,10 @@
   [ed query & {:keys [level view-fn types-config lines]
                :or {level 1
                     view-fn #(hash-map :names %)}}]
-   {:pre [(seq query)]}
-   (let [[_ query-tag tags-string] (re-find #"^\s*(\S+:|)\s*(.*)$" query)
-         query-tag (if (seq query-tag)
-                     (s/replace query-tag
-                                (re-pattern (str "^" tag-prefix "|:$"))
-                                "")
-                     nil)
-         tags (when tags-string (s/split tags-string #"\s*,\s*"))
-         tags (mapcat (partial expand-tag types-config) tags)
-         view-config (view-fn tags)]
-     (->view ed view-config
-             :level level :query-tag query-tag :lines lines)))
+  (let [{:keys [parent-tag tags]} (text->tag-group types-config query)
+        view-config (view-fn tags)]
+    (->view ed view-config
+            :level level :query-tag parent-tag :lines lines)))
 
 (cmd/command {:command :kukui.query-replace-children
               :desc "kukui: replaces current children based on current node's query"
@@ -439,13 +436,13 @@
                                                   (c/safe-next-non-child-line ed line))
                             new-config (->> children-lines
                                             (map #(editor/line ed %))
-                                            (map text->tag-group)
+                                            (map (partial text->tag-group config))
                                             (remove #(let [no-parent (not (:parent-tag %))]
                                                        (when no-parent
                                                          (println "Skipping line with no parent-tag: " (pr-str %)))
                                                        no-parent))
                                             (map #(vector (keyword (:parent-tag %))
-                                                          {:names (vec (:tags %))}))
+                                                          {:names (vec (:tags %)) :default (:default-tag %)}))
                                             (into {})
                                             (update-in config [:types] merge))]
                         (println "New config is: " (pr-str new-config))
