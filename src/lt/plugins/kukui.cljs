@@ -336,6 +336,23 @@
     (get-in types-config [:types (keyword tag) :names])
     [tag]))
 
+(defn text->tag-group
+  "Used by query view and config to associate a parent tag (type) with its tags"
+  [text]
+  (let [[_ parent-tag tags-string] (re-find #"^\s*(\S+:|)\s*(.*)$" text)
+        parent-tag (if (seq parent-tag) (first (text->tags parent-tag)) nil)
+        tags (when tags-string
+               (text->tags (s/join " "
+                                   (map #(str tag-prefix %) (s/split tags-string #"\s*,\s*")))))
+        tags (mapcat (partial expand-tag types-config) tags)]
+    {:parent-tag parent-tag :tags tags}))
+
+
+;; (as-> (text->tag-group "#type: tag1, tag2;")
+;;       group
+;;       {(keyword (:parent-tag group))
+;;        {:names (:tags group)}}))
+
 (defn ->query-view
   "Create a view given a query. There are two formats.
   With parent:    #type: tag1, tag2
@@ -412,3 +429,25 @@
               :exec (fn []
                       (replace-children (pool/last-active)
                                         stamp-nodes))})
+
+(cmd/command {:command :kukui.save-config
+              :desc "kukui: Saves children as config (only :types supported so far)"
+              :exec (fn []
+                      (let [ed (pool/last-active)
+                            line (.-line (editor/cursor ed))
+                            children-lines (range (inc line)
+                                                  (c/safe-next-non-child-line ed line))
+                            new-config (->> children-lines
+                                            (map #(editor/line ed %))
+                                            (map text->tag-group)
+                                            (remove #(let [no-parent (not (:parent-tag %))]
+                                                       (when no-parent
+                                                         (println "Skipping line with no parent-tag: " (pr-str %)))
+                                                       no-parent))
+                                            (map #(vector (keyword (:parent-tag %))
+                                                          {:names (vec (:tags %))}))
+                                            (into {})
+                                            (update-in config [:types] merge))]
+                        (println "New config is: " (pr-str new-config))
+                        (notifos/set-msg! "Saved config")
+                        (def config new-config)))})
