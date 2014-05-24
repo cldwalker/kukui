@@ -8,6 +8,7 @@
             [clojure.string :as s]
             [lt.plugins.kukui.selector :as selector]
             [lt.plugins.kukui.util :as util]
+            [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 
 (defn desc-node? [node]
@@ -301,12 +302,6 @@
                       (replace-children (pool/last-active)
                                         #(->view % (keyword (:name type)))))})
 
-(cmd/command {:command :kukui.stamp-children
-              :desc "kukui: stamps current children with parent tags"
-              :exec (fn []
-                      (replace-children (pool/last-active)
-                                        stamp-nodes))})
-
 (cmd/command {:command :kukui.type-replace-branch
               :desc "kukui: replaces current branch with new type view"
               :options type-selector
@@ -331,7 +326,8 @@
               :exec (fn [type]
                       (let [ed (pool/last-active)]
                         (util/insert-at-next-line ed (->view ed (keyword (:name type))))))})
-
+;; Query commands
+;; ==============
 (defn expand-tag
   "Expands a tag if it's a type"
   [types-config tag]
@@ -379,6 +375,7 @@
 (defn find-parent-line [ed line]
   (c/find-parent ed (range (dec line) -1 -1) (c/line-indent ed line)))
 
+
 (cmd/command {:command :kukui.query-insert-children
               :desc "kukui: inserts current children based on parent node's query"
               :exec (fn []
@@ -393,3 +390,25 @@
                         (if (s/blank? new-body)
                           (notifos/set-msg! (str "No results for '" (editor/line ed line) "'"))
                           (util/insert-at-next-line ed new-body))))})
+
+;; Misc commands
+;; =============
+
+;; move to sacha once descs land
+(cmd/command {:command :kukui.raise-node
+              :desc "kukui: Raises node to replace parent and sets it to parent's level"
+              :exec (fn []
+                      (let [ed (pool/last-active)
+                            parent-line (find-parent-line ed (.-line (editor/cursor ed)))]
+                        (editor/operation ed
+                                          (fn []
+                                            (c/delete-lines ed parent-line parent-line)
+                                            (sacha/indent-branch "subtract")))))})
+
+
+
+(cmd/command {:command :kukui.stamp-children
+              :desc "kukui: stamps current children with parent tags"
+              :exec (fn []
+                      (replace-children (pool/last-active)
+                                        stamp-nodes))})
