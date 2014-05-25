@@ -8,6 +8,7 @@
             [clojure.string :as s]
             [lt.plugins.kukui.selector :as selector]
             [lt.plugins.kukui.util :as util]
+            [lt.plugins.kukui.config :as config]
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 
@@ -93,40 +94,20 @@
                          (range line (c/safe-next-non-child-line ed line))))))})
 
 
-(def unknown-type :unknown)
-
-;; TODO: make this dynamic per branch
-(def config
-  {:types {:priority {:names ["p0" "p1" "p2" "p9" "p?" "later"]
-                      :default "p?"}
-           :duration {:names ["small" "big"]
-                      :default "small"}
-           unknown-type {:names ["leftover"]
-                         :default "leftover"}}})
-
 (defn type-nodes->tag-map
   "Reduces a type's nodes to a tag map with a reducer fn."
   [f type-config nodes]
-  (let [default-tag (or (:default type-config) "leftover")]
-    (reduce
-     (fn [accum node]
-       (let [type-tags (cset/intersection (set (:tags node))
-                                          (set (:names type-config)))
-             type-tags (if (empty? type-tags) [default-tag] type-tags)]
-         #_(prn node type-tags)
-         (reduce #(f %1 %2 node) accum type-tags)))
-     {}
-     nodes)))
+  (reduce
+   (fn [accum node]
+     (let [type-tags (cset/intersection (set (:tags node))
+                                        (set (:names type-config)))
+           type-tags (if (empty? type-tags) [(:default type-config)] type-tags)]
+       #_(prn node type-tags)
+       (reduce #(f %1 %2 node) accum type-tags)))
+   {}
+   nodes))
 
 (def type-counts (partial type-nodes->tag-map #(update-in %1 [%2] inc)))
-
-(defn dynamic-config
-  "Types config which calculates certain types based on nodes e.g. unknown type
-  which accounts for typeless tags."
-  [nodes]
-  (let [unaccounted-tags (cset/difference (set (mapcat :tags nodes))
-                                          (set (->> config :types vals (mapcat :names))))]
-    (update-in config [:types unknown-type :names] #(into unaccounted-tags %))))
 
 (defn ed->nodes
   ([ed] (ed->nodes ed nil))
@@ -141,7 +122,7 @@
 
 (defn types-counts [ed lines]
   (let [nodes (ed->nodes ed lines)
-        types-config (dynamic-config nodes)]
+        types-config (config/dynamic-config nodes)]
     (map
      #(vector %
               (type-counts (get-in types-config [:types %]) nodes))
@@ -239,7 +220,7 @@
                 nodes)
         view-config (if (map? type-or-view)
                       type-or-view
-                      (get-in (dynamic-config nodes) [:types type-or-view]))
+                      (get-in (config/dynamic-config nodes) [:types type-or-view]))
         tags-nodes (type-map view-config nodes)
         tags-nodes (ensure-unique-nodes tags-nodes)
         tags-nodes (save-tags tags-nodes)
@@ -256,7 +237,7 @@
 
 (def type-selector
   (selector/selector {:items (fn []
-                               (map #(hash-map :name (name %)) (keys (:types config))))
+                               (map #(hash-map :name (name %)) (keys (:types config/config))))
                       :key :name}))
 
 (defn check-types-counts
@@ -270,19 +251,6 @@
            (cmd/exec! :editor.undo)
            (notifos/set-msg! "Before and after type counts not equal. Please submit your outline as an issue." {:class "error"})
            (println "BEFORE: " before-replace-counts "\nAFTER: " after-replace-counts)))))
-
-(defn stamp-nodes
-  "Stamp children nodes with parent tags"
-  [ed]
-  (let [level 0
-        nodes (ed->nodes ed)
-        parent-tags (text->tags (editor/line ed (.-line (editor/cursor ed))))
-        new-nodes (map #(add-tags-to-node % parent-tags) nodes)
-        indented-nodes (indent-nodes new-nodes
-                                     (c/line-indent ed (.-line (editor/cursor ed)))
-                                     (editor/option ed "tabSize")
-                                     level)]
-    (str (s/join "\n" indented-nodes) "\n")))
 
 (defn replace-children [ed view-fn]
   (let [end-line (c/safe-next-non-child-line ed (.-line (editor/cursor ed)))]
@@ -352,9 +320,8 @@
                      (#(str tag-prefix (subs % 0 (dec (count %)))))
                      text->tags
                      first)
-        tags (when tags-string
-               (text->tags (s/join " "
-                                   (map #(str tag-prefix %) raw-tags))))
+        tags (text->tags
+              (s/join " " (map #(str tag-prefix %) raw-tags)))
         tags (mapcat (partial expand-tag types-config) tags)]
     {:parent-tag parent-tag :tags tags :default-tag default-tag}))
 
@@ -377,9 +344,8 @@
                             line (.-line (editor/cursor ed))
                             end-line (c/safe-next-non-child-line ed line)
                             new-body (->query-view ed (editor/line ed line)
-                                                   :types-config config
-                                                   :view-fn #(hash-map :names (conj % "leftover")
-                                                                       :default "leftover"))]
+                                                   :types-config config/config
+                                                   :view-fn #(config/->type-config % nil))]
                         (editor/replace (editor/->cm-ed ed)
                                         {:line (inc line) :ch 0}
                                         {:line end-line :ch 0}
@@ -399,7 +365,7 @@
                             ;; TODO: handle no parent
                             end-line (c/safe-next-non-child-line ed parent-line)
                             new-body (->query-view ed (editor/line ed line)
-                                                   :types-config config
+                                                   :types-config config/config
                                                    :lines (range parent-line end-line))]
                         (if (s/blank? new-body)
                           (notifos/set-msg! (str "No results for '" (editor/line ed line) "'"))
@@ -419,7 +385,18 @@
                                             (c/delete-lines ed parent-line parent-line)
                                             (sacha/indent-branch "subtract")))))})
 
-
+(defn stamp-nodes
+  "Stamp children nodes with parent tags"
+  [ed]
+  (let [level 0
+        nodes (ed->nodes ed)
+        parent-tags (text->tags (editor/line ed (.-line (editor/cursor ed))))
+        new-nodes (map #(add-tags-to-node % parent-tags) nodes)
+        indented-nodes (indent-nodes new-nodes
+                                     (c/line-indent ed (.-line (editor/cursor ed)))
+                                     (editor/option ed "tabSize")
+                                     level)]
+    (str (s/join "\n" indented-nodes) "\n")))
 
 (cmd/command {:command :kukui.stamp-children
               :desc "kukui: stamps current children with parent tags"
@@ -430,21 +407,4 @@
 (cmd/command {:command :kukui.save-config
               :desc "kukui: Saves children as config (only :types supported so far)"
               :exec (fn []
-                      (let [ed (pool/last-active)
-                            line (.-line (editor/cursor ed))
-                            children-lines (range (inc line)
-                                                  (c/safe-next-non-child-line ed line))
-                            new-config (->> children-lines
-                                            (map #(editor/line ed %))
-                                            (map (partial text->tag-group config))
-                                            (remove #(let [no-parent (not (:parent-tag %))]
-                                                       (when no-parent
-                                                         (println "Skipping line with no parent-tag: " (pr-str %)))
-                                                       no-parent))
-                                            (map #(vector (keyword (:parent-tag %))
-                                                          {:names (vec (:tags %)) :default (:default-tag %)}))
-                                            (into {})
-                                            (update-in config [:types] merge))]
-                        (println "New config is: " (pr-str new-config))
-                        (notifos/set-msg! "Saved config")
-                        (def config new-config)))})
+                     (config/save-config (pool/last-active) text->tag-group))})
