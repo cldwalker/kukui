@@ -405,6 +405,11 @@
                                         stamp-nodes))})
 
 (cmd/command {:command :kukui.save-config
-              :desc "kukui: Saves children as config (only :types supported so far)"
+              :desc "kukui: Saves config with current children config with a merge"
               :exec (fn []
-                     (config/save-config (pool/last-active) text->tag-group))})
+                     (config/save-config (pool/last-active) text->tag-group false))})
+
+(cmd/command {:command :kukui.reset-config
+              :desc "kukui: Resets config with current children config"
+              :exec (fn []
+                     (config/save-config (pool/last-active) text->tag-group true))})

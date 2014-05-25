@@ -9,13 +9,18 @@
 
 (def unknown-type :unknown)
 
-(def config
+(def base-config
+  {:types {unknown-type {:names ["leftover"]
+                         :default "leftover"}}})
+
+;; User config to use across outlines. Consider making this configurable
+(def global-config
   {:types {:priority {:names ["p0" "p1" "p2" "p9" "p?" "later"]
                       :default "p?"}
            :duration {:names ["small" "big"]
-                      :default "small"}
-           unknown-type {:names ["leftover"]
-                         :default "leftover"}}})
+                      :default "small"}}})
+
+(def config (merge-with merge base-config global-config))
 
 (defn ->type-config [names default]
   {:names (if default names (conj names "leftover"))
@@ -29,7 +34,9 @@
                                           (set (->> config :types vals (mapcat :names))))]
     (update-in config [:types unknown-type :names] #(into unaccounted-tags %))))
 
-(defn save-config [ed tag-group-fn]
+(defn save-config
+  "Merges/resets :types in config. Currently only handles user cursor being on :types of a config"
+  [ed tag-group-fn reset]
   (let [line (.-line (editor/cursor ed))
         children-lines (range (inc line)
                               (c/safe-next-non-child-line ed line))
@@ -43,7 +50,8 @@
                         (map #(vector (keyword (:parent-tag %))
                                       (->type-config (vec (:tags %)) (:default-tag %))))
                         (into {})
-                        (update-in config [:types] merge))]
+                        (update-in (if reset (merge-with merge base-config global-config) config)
+                                   [:types] merge))]
     (println "New config is: " (pr-str new-config))
     (notifos/set-msg! "Saved config")
     (def config new-config)))
