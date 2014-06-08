@@ -297,6 +297,7 @@
                         (util/insert-at-next-line ed (->view ed (keyword (:name type))))))})
 ;; Query commands
 ;; ==============
+;; Note this doesn't expand unknown type
 (defn expand-tag
   "Expands a tag if it's a type"
   [types-config tag]
@@ -357,16 +358,18 @@
 
 
 (cmd/command {:command :kukui.query-insert-children
-              :desc "kukui: inserts current children based on parent node's query"
+              :desc "kukui: inserts children based on current node's query and parent's children"
               :exec (fn []
                       (let [ed (pool/last-active)
                             line (.-line (editor/cursor ed))
                             parent-line (find-parent-line ed line)
-                            ;; TODO: handle no parent
-                            end-line (c/safe-next-non-child-line ed parent-line)
+                            lines (if parent-line
+                                    (range parent-line (c/safe-next-non-child-line ed parent-line))
+                                    ;; If no parent, assume at top level and search whole file
+                                    (range 0 (inc (editor/last-line ed))))
                             new-body (->query-view ed (editor/line ed line)
                                                    :types-config config/config
-                                                   :lines (range parent-line end-line))]
+                                                   :lines lines)]
                         (if (s/blank? new-body)
                           (notifos/set-msg! (str "No results for '" (editor/line ed line) "'"))
                           (util/insert-at-next-line ed new-body))))})
