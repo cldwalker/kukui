@@ -39,14 +39,17 @@
 (defn add-node-with-tags [nodes node tags]
   (conj nodes (assoc node :tags tags)))
 
+(defn line->node [ed line]
+  {:line line
+   :indent (c/line-indent ed line)
+   :text (editor/line ed line)})
+
 (defn ->tagged-nodes
   "Returns nodes with :line, :indent, :text and :tags properties.
   Tags are picked up from parents and any words starting with '#'."
   [ed lines]
   (->> lines
-       (map #(hash-map :line %
-                       :indent (c/line-indent ed %)
-                       :text (editor/line ed %)))
+       (map #(line->node ed %))
        ;; [] needed to include last element
        (partition 2 1 [])
        (reduce
@@ -388,6 +391,18 @@
                                             (c/delete-lines ed parent-line parent-line)
                                             (sacha/indent-branch "subtract")))))})
 
+;; Move to sacha when appropriate
+(defn toggle-all
+  "Similar to codemirror fold/unfold-all but condition is given line number"
+  ([ed condition]
+   (toggle-all ed condition (range (editor/first-line ed) (inc (editor/last-line ed)))))
+  ([ed condition lines]
+   (editor/operation ed
+                     (fn []
+                       (doseq [line lines]
+                         (when (condition line)
+                           (c/fold-code ed #js {:line line :ch 0} nil)))))))
+
 (defn stamp-nodes
   "Stamp children nodes with parent tags"
   [ed]
@@ -416,3 +431,15 @@
               :desc "kukui: Resets config with current children config"
               :exec (fn []
                      (config/save-config (pool/last-active) text->tag-group true))})
+
+(cmd/command {:command :kukui.toggle-descs
+              :desc "kukui: Toggle visibility of descs of current children"
+              :exec (fn []
+                      (let [ed (pool/last-active)
+                            line (.-line (editor/cursor ed))
+                            end-line (c/safe-next-non-child-line ed line)]
+                        (toggle-all ed
+                                     #(and
+                                       (not (desc-node? (line->node ed %)))
+                                       (desc-node? (line->node ed (inc %))))
+                                     (range line end-line))))})
