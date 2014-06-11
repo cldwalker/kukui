@@ -5,16 +5,18 @@
                              [com.cemerick/clojurescript.test "0.3.1"]]
                    :hooks        [leiningen.cljsbuild]}}
   :cljsbuild {:builds
-              {:whitespace {:source-paths ["test"]
+              {:whitespace {:source-paths ["test"] ;; can't include src because of LT
                             :compiler
                             {:output-to "target/cljsbuild/whitespace/kukui.js"
                              :optimizations :whitespace
                              :pretty-print true}}
-               :advanced {:source-paths ["test"]
-                          :compiler
-                          {:output-to "target/cljsbuild/advanced/kukui.js"
-                           :pretty-print  false
-                           :optimizations :advanced}}}
+               ;; avoid advanced recompilation when testing
+               ;; :advanced {:source-paths ["src" "test"]
+               ;;            :compiler
+               ;;            {:output-to "target/cljsbuild/advanced/kukui.js"
+               ;;             :pretty-print  false
+               ;;             :optimizations :advanced}}
+               }
               :test-commands {"whitespace" ["phantomjs" :runner
                                             "target/cljsbuild/whitespace/kukui.js"]
                               "advanced" ["phantomjs" :runner
