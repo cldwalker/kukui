@@ -9,6 +9,7 @@
             [lt.plugins.kukui.selector :as selector]
             [lt.plugins.kukui.util :as util]
             [lt.plugins.kukui.config :as config]
+            [lt.plugins.kukui.core :refer [text->tags tag-prefix]]
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 
@@ -20,21 +21,7 @@
     (and (> (:indent next) (:indent curr))
          (not (desc-node? next)))))
 
-(def tag-prefix "#")
 (def default-tag-char "*")
-
-;; This regex returns pairs of matches but only the latter is useful. This
-;; is a necessary evil caused by no negative-lookbehind in JS
-(def tag-pattern
-  "Regex for pulling out tags with tag-prefix. To escape having a tag parsed,
-  put a backslash before it e.g. \\#escaped"
-  (re-pattern (str "(?:[^\\\\]|^)"
-                   "(" tag-prefix "[^ \\t\\n:.,;\\*]+" ")")))
-
-(defn text->tags [text]
-  (map
-   #(subs % 1)
-   (map second (re-seq tag-pattern text))))
 
 (defn add-node-with-tags [nodes node tags]
   (conj nodes (assoc node :tags tags)))
