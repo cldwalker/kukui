@@ -13,3 +13,15 @@
   (is (= '("punct3" "punct1" "punct2")
          (k/text->tags "#punct3, #punct1; #punct2*"))
    "breaks tags on some punctuation char"))
+
+(deftest text->tag-group
+  (testing "parent with child tags"
+    (is (= {:parent-tag "parent" :tags '("child1" "child2") :default-tag nil}
+       (k/text->tag-group {} "#parent: child1 , child2"))))
+  (testing "just child tags"
+    (is (= {:parent-tag nil :tags '("tag1" "tag2") :default-tag "tag2"}
+           (k/text->tag-group {} "tag1, tag2*"))))
+  (testing "expand child tag"
+    (is (= {:parent-tag "today" :tags '("lunch" "chocolate" "coffee") :default-tag nil}
+           (k/text->tag-group {:types {:drink {:names ["chocolate" "coffee"]}}}
+                              "#today: lunch, drink")))))
