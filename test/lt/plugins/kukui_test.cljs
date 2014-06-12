@@ -25,3 +25,16 @@
     (is (= {:parent-tag "today" :tags '("lunch" "chocolate" "coffee") :default-tag nil}
            (k/text->tag-group {:types {:drink {:names ["chocolate" "coffee"]}}}
                               "#today: lunch, drink")))))
+
+(deftest indent-nodes
+  (is
+   (= ["      #parent"
+       "        child1"
+       "        child2"
+       "          + some desc"]
+      (k/indent-nodes
+       [{:type-tag true :text "#parent"}
+        {:text "    child1"}
+        {:text "    child2"
+         :desc [{:text "      + some desc"}]}]
+       4 2 1))))

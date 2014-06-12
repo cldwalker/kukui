@@ -48,3 +48,23 @@
               (s/join " " (map #(str tag-prefix %) raw-tags)))
         tags (mapcat (partial expand-tag types-config) tags)]
     {:parent-tag parent-tag :tags tags :default-tag default-tag}))
+
+(defn indent-node [node indent]
+  (s/replace-first
+   (:text node)
+   #"^\s*"
+   (apply str (repeat indent " "))))
+
+(defn indent-nodes [nodes indent tab-size offset-level]
+  (let [offset (* offset-level tab-size)
+        tag-indent (+ indent offset)
+        node-indent (+ indent offset tab-size)
+        desc-indent (+ indent offset tab-size tab-size)]
+    (mapcat
+     #(if (:type-tag %)
+        [(str (apply str (repeat tag-indent " "))
+              (:text %))]
+        (into [(indent-node % node-indent)]
+              (map (fn [x] (indent-node x desc-indent))
+                   (:desc %))))
+     nodes)))

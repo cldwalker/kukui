@@ -9,7 +9,7 @@
             [lt.plugins.kukui.selector :as selector]
             [lt.plugins.kukui.util :as util]
             [lt.plugins.kukui.config :as config]
-            [lt.plugins.kukui.core :refer [text->tags tag-prefix text->tag-group]]
+            [lt.plugins.kukui.core :refer [text->tags tag-prefix text->tag-group indent-nodes]]
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 
@@ -130,27 +130,6 @@
 ;; ==================
 
 (def type-map (partial type-nodes->tag-map #(update-in %1 [%2] (fnil conj []) %3)))
-
-(defn indent-node [node indent]
-  (s/replace-first
-   (:text node)
-   #"^\s*"
-   (apply str (repeat indent " "))))
-
-(defn indent-nodes [nodes indent tab-size offset-level]
-  (let [offset (* offset-level tab-size)
-        tag-indent (+ indent offset)
-        node-indent (+ indent offset tab-size)
-        desc-indent (+ indent offset tab-size tab-size)]
-    (mapcat
-     #(if (:type-tag %)
-        [(str (apply str (repeat tag-indent " "))
-              (:text %))]
-        (into [(indent-node % node-indent)]
-              (map (fn [x] (indent-node x desc-indent))
-                   (:desc %))))
-     nodes)))
-
 
 (defn add-tags-to-node [node tags]
   (update-in node [:text] str
