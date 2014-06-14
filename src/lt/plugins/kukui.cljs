@@ -116,10 +116,27 @@
               (type-counts (get-in types-config [:types %]) nodes))
      (keys (:types types-config)))))
 
+(defn total-types-counts
+  "Different than type-counts in that this only counts total for each type
+  and is only based on explicit tags - no defaults are taken into account.
+  Also, one node gets counted for each of its tags."
+  [ed]
+  (let [line (.-line (editor/cursor ed))
+        tagged-counts (->tagged-counts
+                       ed (range line (c/safe-next-non-child-line ed line)))]
+    (reduce-kv
+     (fn [accum tag count]
+       (update-in accum [(config/find-type tag)]
+                  (fnil + 0) count))
+     {}
+     tagged-counts)))
+
+
 (cmd/command {:command :kukui.types-counts
               :desc "kukui: tag counts of each type for current branch or selection"
               :exec (fn []
-                      (prn (types-counts (pool/last-active) nil)))})
+                      (prn (types-counts (pool/last-active) nil))
+                      (prn (total-types-counts (pool/last-active))))})
 
 (cmd/command {:command :kukui.debug-nodes
               :desc "kukui: prints nodes for current branch or selection"

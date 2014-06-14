@@ -34,6 +34,16 @@
                                           (set (->> config :types vals (mapcat :names))))]
     (update-in config [:types unknown-type :names] #(into unaccounted-tags %))))
 
+;; Doesn't handle tags that appear in multiple types e.g. leftover
+(defn find-type
+  "Finds a tag's type. Returns unknown-type if none found."
+  [tag]
+  (or (some (fn [[type type-map]]
+              (when (contains? (set (:names type-map)) tag)
+                (name type)))
+            (:types config))
+      (name unknown-type)))
+
 (defn save-config
   "Merges/resets :types in config. Currently only handles user cursor being on :types of a config"
   [ed tag-group-fn reset]
