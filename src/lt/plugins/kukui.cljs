@@ -22,7 +22,7 @@
          (not (desc-node? next)))))
 
 (defn add-node-with-tags [nodes node tags]
-  (conj nodes (assoc node :tags tags)))
+  (conj nodes (assoc node :tags (set tags))))
 
 (defn line->node [ed line]
   {:line line
@@ -87,7 +87,7 @@
   [f type-config nodes]
   (reduce
    (fn [accum node]
-     (let [type-tags (cset/intersection (set (:tags node))
+     (let [type-tags (cset/intersection (:tags node)
                                         (set (:names type-config)))
            type-tags (if (empty? type-tags) [(:default type-config)] type-tags)]
        #_(prn node type-tags)
@@ -159,7 +159,7 @@
    (fn [accum tag nodes]
      (assoc accum tag
        (map (fn [node]
-              (let [tags-to-add (cset/difference (set (:tags node))
+              (let [tags-to-add (cset/difference (:tags node)
                                                  #{tag}
                                                  (set (text->tags (:text node))))]
                 (add-tags-to-node node tags-to-add)))
@@ -176,7 +176,7 @@
                      (when (> c 1) node)) freqs)
         most-popular-tag #(first (apply max-key
                                         (fn [[tag nodes]]
-                                          (when ((set %) tag)
+                                          (when (contains? % tag)
                                             (count nodes))) tags-nodes))
         ;; pairs of allowed tag and dup nodes
         tag-dups (map #(vector (most-popular-tag (:tags %)) %) dups)
@@ -200,7 +200,7 @@
   [ed type-or-view & {:keys [level query-tag lines] :or {level 1}}]
   (let [nodes (ed->nodes ed lines)
         nodes (if query-tag
-                (filter #(contains? (set (:tags %)) query-tag) nodes)
+                (filter #(contains? (:tags %) query-tag) nodes)
                 nodes)
         view-config (if (map? type-or-view)
                       type-or-view
