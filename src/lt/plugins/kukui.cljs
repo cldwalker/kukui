@@ -135,8 +135,10 @@
 (cmd/command {:command :kukui.types-counts
               :desc "kukui: tag counts of each type for current branch or selection"
               :exec (fn []
-                      (prn (types-counts (pool/last-active) nil))
-                      (prn (total-types-counts (pool/last-active))))})
+                      (let [ed (pool/last-active)]
+                        (prn (types-counts ed nil))
+                        (prn (assoc (total-types-counts ed)
+                               "nodes" (count (ed->nodes ed nil))))))})
 
 (cmd/command {:command :kukui.debug-nodes
               :desc "kukui: prints nodes for current branch or selection"
