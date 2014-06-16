@@ -290,12 +290,14 @@
   Without parent: tag1, tag2"
   [ed query & {:keys [level view-fn types-config lines]
                :or {level 1
-                    view-fn #(hash-map :names %)}}]
+                    ;; doesn't add leftover to query
+                    view-fn #(config/->type-config % true)}}]
   (let [{:keys [parent-tag tags]} (text->tag-group types-config query)
         view-config (view-fn tags)]
     (->view ed view-config
             :level level :query-tag parent-tag :lines lines)))
 
+;; always add leftover to query
 (cmd/command {:command :kukui.query-replace-children
               :desc "kukui: replaces current children based on current node's query"
               :exec (fn []

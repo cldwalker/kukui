@@ -22,9 +22,9 @@
 
 (def config (merge-with merge base-config global-config))
 
-(defn ->type-config [names default]
-  {:names (if default names (conj names "leftover"))
-   :default (or default "leftover")})
+(defn ->type-config [names no-default]
+  {:names (if no-default names (conj names "leftover"))
+   :default "leftover"})
 
 (defn dynamic-config
   "Types config which calculates certain types based on nodes e.g. unknown type
