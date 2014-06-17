@@ -29,7 +29,7 @@
    :indent (c/line-indent ed line)
    :text (editor/line ed line)})
 
-(defn ->tagged-nodes
+(defn ->tagged-nodes*
   "Returns nodes with :line, :indent, :text and :tags properties.
   Tags are picked up from parents and any words starting with '#'."
   [ed lines]
@@ -64,6 +64,15 @@
         ;; :tags - contains all tags but only keeps the latest tag for a given indent
         {:tags #{} :nodes []})
        :nodes))
+
+
+(def ignore-tag "ignore")
+
+(defn ->tagged-nodes
+  "Same as ->tagged-nodes* but respects ignore-tag"
+  [ed lines]
+  (let [nodes (->tagged-nodes* ed lines)]
+    (remove #(contains? (:tags %) ignore-tag) nodes)))
 
 (defn ->tagged-counts
   "For given lines, returns map of tags and how many nodes have that tag."
@@ -131,12 +140,16 @@
      {}
      tagged-counts)))
 
+(defn pprint
+  "Useful for printing list or vec of maps. Hack until actual cljs.pprint exists"
+  [data]
+  (println (s/join "\n" data)))
 
 (cmd/command {:command :kukui.types-counts
               :desc "kukui: tag counts of each type for current branch or selection"
               :exec (fn []
                       (let [ed (pool/last-active)]
-                        (prn (types-counts ed nil))
+                        (pprint (types-counts ed nil))
                         (prn (assoc (total-types-counts ed nil)
                                "nodes" (count (ed->nodes ed nil))))))})
 
@@ -146,7 +159,7 @@
                       (let [ed (pool/last-active)
                             lines (range (editor/first-line ed)
                                          (inc (editor/last-line ed)))]
-                        (prn (types-counts ed lines))
+                        (pprint (types-counts ed lines))
                         (prn (assoc (total-types-counts ed lines)
                                "nodes" (count (ed->nodes ed lines))))))})
 
@@ -154,7 +167,7 @@
 (cmd/command {:command :kukui.debug-nodes
               :desc "kukui: prints nodes for current branch or selection"
               :exec (fn []
-                      (println (s/join "\n" (ed->nodes (pool/last-active)))))})
+                      (pprint (ed->nodes (pool/last-active))))})
 
 ;; Type view commands
 ;; ==================
