@@ -15,7 +15,7 @@
 
 ;; User config to use across outlines. Consider making this configurable
 (def global-config
-  {:types {:priority {:names ["p0" "p1" "p2" "p9" "p?" "later"]
+  {:types {:priority {:names ["p0" "p1" "p2" "p3" "p4" "p5" "p6" "p7" "p8" "p9" "p?" "later"]
                       :default "p?"}
            :duration {:names ["small" "big"]
                       :default "small"}}})

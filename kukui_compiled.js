@@ -15,7 +15,7 @@ goog.require('lt.objs.notifos');
 goog.require('lt.objs.editor');
 lt.plugins.kukui.config.unknown_type = new cljs.core.Keyword(null,"unknown","unknown",729063356);
 lt.plugins.kukui.config.base_config = new cljs.core.PersistentArrayMap(null, 1, [new cljs.core.Keyword(null,"types","types",1124748267),new cljs.core.PersistentArrayMap.fromArray([lt.plugins.kukui.config.unknown_type,new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"names","names",1118489274),new cljs.core.PersistentVector(null, 1, 5, cljs.core.PersistentVector.EMPTY_NODE, ["leftover"], null),new cljs.core.Keyword(null,"default","default",2558708147),"leftover"], null)], true, false)], null);
-lt.plugins.kukui.config.global_config = new cljs.core.PersistentArrayMap(null, 1, [new cljs.core.Keyword(null,"types","types",1124748267),new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"priority","priority",4143410454),new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"names","names",1118489274),new cljs.core.PersistentVector(null, 6, 5, cljs.core.PersistentVector.EMPTY_NODE, ["p0","p1","p2","p9","p?","later"], null),new cljs.core.Keyword(null,"default","default",2558708147),"p?"], null),new cljs.core.Keyword(null,"duration","duration",3316859142),new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"names","names",1118489274),new cljs.core.PersistentVector(null, 2, 5, cljs.core.PersistentVector.EMPTY_NODE, ["small","big"], null),new cljs.core.Keyword(null,"default","default",2558708147),"small"], null)], null)], null);
+lt.plugins.kukui.config.global_config = new cljs.core.PersistentArrayMap(null, 1, [new cljs.core.Keyword(null,"types","types",1124748267),new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"priority","priority",4143410454),new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"names","names",1118489274),new cljs.core.PersistentVector(null, 12, 5, cljs.core.PersistentVector.EMPTY_NODE, ["p0","p1","p2","p3","p4","p5","p6","p7","p8","p9","p?","later"], null),new cljs.core.Keyword(null,"default","default",2558708147),"p?"], null),new cljs.core.Keyword(null,"duration","duration",3316859142),new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"names","names",1118489274),new cljs.core.PersistentVector(null, 2, 5, cljs.core.PersistentVector.EMPTY_NODE, ["small","big"], null),new cljs.core.Keyword(null,"default","default",2558708147),"small"], null)], null)], null);
 lt.plugins.kukui.config.config = cljs.core.merge_with.call(null,cljs.core.merge,lt.plugins.kukui.config.base_config,lt.plugins.kukui.config.global_config);
 lt.plugins.kukui.config.__GT_type_config = (function __GT_type_config(names,no_default){return new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"names","names",1118489274),(cljs.core.truth_(no_default)?names:cljs.core.conj.call(null,names,"leftover")),new cljs.core.Keyword(null,"default","default",2558708147),"leftover"], null);
 });
@@ -24,14 +24,14 @@ lt.plugins.kukui.config.__GT_type_config = (function __GT_type_config(names,no_d
 * which accounts for typeless tags.
 */
 lt.plugins.kukui.config.dynamic_config = (function dynamic_config(nodes){var unaccounted_tags = clojure.set.difference.call(null,cljs.core.set.call(null,cljs.core.mapcat.call(null,new cljs.core.Keyword(null,"tags","tags",1017456523),nodes)),cljs.core.set.call(null,cljs.core.mapcat.call(null,new cljs.core.Keyword(null,"names","names",1118489274),cljs.core.vals.call(null,new cljs.core.Keyword(null,"types","types",1124748267).cljs$core$IFn$_invoke$arity$1(lt.plugins.kukui.config.config)))));return cljs.core.update_in.call(null,lt.plugins.kukui.config.config,new cljs.core.PersistentVector(null, 3, 5, cljs.core.PersistentVector.EMPTY_NODE, [new cljs.core.Keyword(null,"types","types",1124748267),lt.plugins.kukui.config.unknown_type,new cljs.core.Keyword(null,"names","names",1118489274)], null),((function (unaccounted_tags){
-return (function (p1__8673_SHARP_){return cljs.core.into.call(null,unaccounted_tags,p1__8673_SHARP_);
+return (function (p1__12290_SHARP_){return cljs.core.into.call(null,unaccounted_tags,p1__12290_SHARP_);
 });})(unaccounted_tags))
 );
 });
 /**
 * Finds a tag's type. Returns unknown-type if none found.
 */
-lt.plugins.kukui.config.find_type = (function find_type(tag){var or__6445__auto__ = cljs.core.some.call(null,(function (p__8680){var vec__8681 = p__8680;var type = cljs.core.nth.call(null,vec__8681,0,null);var type_map = cljs.core.nth.call(null,vec__8681,1,null);if(cljs.core.contains_QMARK_.call(null,cljs.core.set.call(null,new cljs.core.Keyword(null,"names","names",1118489274).cljs$core$IFn$_invoke$arity$1(type_map)),tag))
+lt.plugins.kukui.config.find_type = (function find_type(tag){var or__6445__auto__ = cljs.core.some.call(null,(function (p__12297){var vec__12298 = p__12297;var type = cljs.core.nth.call(null,vec__12298,0,null);var type_map = cljs.core.nth.call(null,vec__12298,1,null);if(cljs.core.contains_QMARK_.call(null,cljs.core.set.call(null,new cljs.core.Keyword(null,"names","names",1118489274).cljs$core$IFn$_invoke$arity$1(type_map)),tag))
 {return cljs.core.name.call(null,type);
 } else
 {return null;
@@ -46,17 +46,17 @@ lt.plugins.kukui.config.find_type = (function find_type(tag){var or__6445__auto_
 * Merges/resets :types in config. Currently only handles user cursor being on :types of a config
 */
 lt.plugins.kukui.config.save_config = (function save_config(ed,tag_group_fn,reset){var line = lt.objs.editor.cursor.call(null,ed).line;var children_lines = cljs.core.range.call(null,(line + 1),lt.plugins.sacha.codemirror.safe_next_non_child_line.call(null,ed,line));var new_config = cljs.core.update_in.call(null,(cljs.core.truth_(reset)?cljs.core.merge_with.call(null,cljs.core.merge,lt.plugins.kukui.config.base_config,lt.plugins.kukui.config.global_config):lt.plugins.kukui.config.config),new cljs.core.PersistentVector(null, 1, 5, cljs.core.PersistentVector.EMPTY_NODE, [new cljs.core.Keyword(null,"types","types",1124748267)], null),cljs.core.merge,cljs.core.into.call(null,cljs.core.PersistentArrayMap.EMPTY,cljs.core.map.call(null,((function (line,children_lines){
-return (function (p1__8684_SHARP_){return (new cljs.core.PersistentVector(null,2,5,cljs.core.PersistentVector.EMPTY_NODE,[cljs.core.keyword.call(null,new cljs.core.Keyword(null,"parent-tag","parent-tag",768068457).cljs$core$IFn$_invoke$arity$1(p1__8684_SHARP_)),lt.plugins.kukui.config.__GT_type_config.call(null,cljs.core.vec.call(null,new cljs.core.Keyword(null,"tags","tags",1017456523).cljs$core$IFn$_invoke$arity$1(p1__8684_SHARP_)),new cljs.core.Keyword(null,"default-tag","default-tag",575796608).cljs$core$IFn$_invoke$arity$1(p1__8684_SHARP_))],null));
+return (function (p1__12301_SHARP_){return (new cljs.core.PersistentVector(null,2,5,cljs.core.PersistentVector.EMPTY_NODE,[cljs.core.keyword.call(null,new cljs.core.Keyword(null,"parent-tag","parent-tag",768068457).cljs$core$IFn$_invoke$arity$1(p1__12301_SHARP_)),lt.plugins.kukui.config.__GT_type_config.call(null,cljs.core.vec.call(null,new cljs.core.Keyword(null,"tags","tags",1017456523).cljs$core$IFn$_invoke$arity$1(p1__12301_SHARP_)),new cljs.core.Keyword(null,"default-tag","default-tag",575796608).cljs$core$IFn$_invoke$arity$1(p1__12301_SHARP_))],null));
 });})(line,children_lines))
 ,cljs.core.remove.call(null,((function (line,children_lines){
-return (function (p1__8683_SHARP_){var no_parent = cljs.core.not.call(null,new cljs.core.Keyword(null,"parent-tag","parent-tag",768068457).cljs$core$IFn$_invoke$arity$1(p1__8683_SHARP_));if(no_parent)
-{cljs.core.println.call(null,"Skipping line with no parent-tag: ",cljs.core.pr_str.call(null,p1__8683_SHARP_));
+return (function (p1__12300_SHARP_){var no_parent = cljs.core.not.call(null,new cljs.core.Keyword(null,"parent-tag","parent-tag",768068457).cljs$core$IFn$_invoke$arity$1(p1__12300_SHARP_));if(no_parent)
+{cljs.core.println.call(null,"Skipping line with no parent-tag: ",cljs.core.pr_str.call(null,p1__12300_SHARP_));
 } else
 {}
 return no_parent;
 });})(line,children_lines))
 ,cljs.core.map.call(null,cljs.core.partial.call(null,tag_group_fn,lt.plugins.kukui.config.config),cljs.core.map.call(null,((function (line,children_lines){
-return (function (p1__8682_SHARP_){return lt.objs.editor.line.call(null,ed,p1__8682_SHARP_);
+return (function (p1__12299_SHARP_){return lt.objs.editor.line.call(null,ed,p1__12299_SHARP_);
 });})(line,children_lines))
 ,children_lines))))));cljs.core.println.call(null,"New config is: ",cljs.core.pr_str.call(null,new_config));
 lt.objs.notifos.set_msg_BANG_.call(null,"Saved config");
