@@ -29,12 +29,16 @@
    :indent (c/line-indent ed line)
    :text (editor/line ed line)})
 
+(def ignore-tag "ignore")
+
 (defn ->tagged-nodes*
   "Returns nodes with :line, :indent, :text and :tags properties.
   Tags are picked up from parents and any words starting with '#'."
   [ed lines]
   (->> lines
        (map #(line->node ed %))
+       (map #(if (re-find #"^\s*:config\s*$" (:text %))
+               (update-in % [:text] str " " tag-prefix ignore-tag) %))
        ;; [] needed to include last element
        (partition 2 1 [])
        (reduce
@@ -65,8 +69,6 @@
         {:tags #{} :nodes []})
        :nodes))
 
-
-(def ignore-tag "ignore")
 
 (defn ->tagged-nodes
   "Same as ->tagged-nodes* but respects ignore-tag"
