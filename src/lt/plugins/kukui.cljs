@@ -150,20 +150,24 @@
 (cmd/command {:command :kukui.types-counts
               :desc "kukui: tag counts of each type for current branch or selection"
               :exec (fn []
-                      (let [ed (pool/last-active)]
+                      (let [ed (pool/last-active)
+                            nodes (ed->nodes ed nil)]
                         (pprint (types-counts ed nil))
                         (prn (assoc (total-types-counts ed nil)
-                               "nodes" (count (ed->nodes ed nil))))))})
+                               "untagged" (count (filter (comp empty? :tags) nodes))
+                               "nodes" (count nodes)))))})
 
 (cmd/command {:command :kukui.all-types-counts
               :desc "kukui: Same as types-counts but for whole file"
               :exec (fn []
                       (let [ed (pool/last-active)
                             lines (range (editor/first-line ed)
-                                         (inc (editor/last-line ed)))]
+                                         (inc (editor/last-line ed)))
+                            nodes (ed->nodes ed lines)]
                         (pprint (types-counts ed lines))
                         (prn (assoc (total-types-counts ed lines)
-                               "nodes" (count (ed->nodes ed lines))))))})
+                               "untagged" (count (filter (comp empty? :tags) nodes))
+                               "nodes" (count nodes)))))})
 
 
 (cmd/command {:command :kukui.debug-nodes
