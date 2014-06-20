@@ -122,9 +122,11 @@
 (defn types-counts [ed lines]
   (let [nodes (ed->nodes ed lines)
         types-config (config/dynamic-config nodes)]
-    (map
-     #(vector %
-              (type-counts (get-in types-config [:types %]) nodes))
+    (keep
+     #(let [counts (type-counts (get-in types-config [:types %]) nodes)]
+        (when-not (and (= 1 (count counts))
+                       (get counts (get-in types-config [:types % :default])))
+          (vector % counts)))
      (keys (:types types-config)))))
 
 (defn total-types-counts
