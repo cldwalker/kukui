@@ -44,13 +44,34 @@
             (:types config))
       (name unknown-type)))
 
+(defn deep-merge [& vals]
+  (if (every? map? vals)
+    (apply merge-with deep-merge vals)
+    ;; Assume vals are sequential?
+    (apply into vals)))
+
+(defn save-config*
+  [user-config merge-type]
+  (let [new-config
+        (case merge-type
+          :reset (update-in (merge-with merge base-config global-config)
+                            [:types] merge user-config)
+          :into-type (update-in config [:types] #(merge-with deep-merge % user-config))
+          ;; :replace-type - clobbers a given type
+          (update-in config [:types] merge user-config))]
+
+    (println "New config is: " (pr-str new-config))
+    (notifos/set-msg! "Saved config")
+    (def config new-config)))
+
 (defn save-config
-  "Merges/resets :types in config. Currently only handles user cursor being on :types of a config"
-  [ed tag-group-fn reset]
+  "Updates :types in config depending on merge-type.
+  Currently only handles user cursor being on :types of a config"
+  [ed tag-group-fn merge-type]
   (let [line (.-line (editor/cursor ed))
         children-lines (range (inc line)
                               (c/safe-next-non-child-line ed line))
-        new-config (->> children-lines
+        user-config (->> children-lines
                         (map #(editor/line ed %))
                         (map (partial tag-group-fn config))
                         (remove #(let [no-parent (not (:parent-tag %))]
@@ -59,9 +80,8 @@
                                    no-parent))
                         (map #(vector (keyword (:parent-tag %))
                                       (->type-config (vec (:tags %)) (:default-tag %))))
-                        (into {})
-                        (update-in (if reset (merge-with merge base-config global-config) config)
-                                   [:types] merge))]
-    (println "New config is: " (pr-str new-config))
-    (notifos/set-msg! "Saved config")
-    (def config new-config)))
+                        (into {}))]
+    (save-config* user-config merge-type)))
+
+(defn read-config-line [line]
+  (next (re-find #"^\s*(?::config)?\.([^:]+):\s*(\S+)$" line)))
