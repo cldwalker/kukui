@@ -344,24 +344,12 @@
                                         {:line end-line :ch 0}
                                         new-body)))})
 
-;; consider moving to sacha
-(defn find-parent-line [ed line]
-  (c/find-parent ed (range (dec line) -1 -1) (c/line-indent ed line)))
-
-(defn find-parent-lines
-  "Finds range of lines for parent and returns all lines in file when no parent"
-  [ed line]
-  (if-let [parent-line (find-parent-line ed line)]
-    (range parent-line (c/safe-next-non-child-line ed parent-line))
-    ;; If no parent, assume at top level and search whole file
-    (range (editor/first-line ed) (inc (editor/last-line ed)))))
-
 (cmd/command {:command :kukui.query-insert-children
               :desc "kukui: inserts children based on current node's query and parent's children"
               :exec (fn []
                       (let [ed (pool/last-active)
                             line (.-line (editor/cursor ed))
-                            lines (find-parent-lines ed line)
+                            lines (util/find-parent-lines ed line)
                             new-body (->query-view ed (editor/line ed line)
                                                    :types-config config/config
                                                    :lines lines)]
@@ -371,24 +359,6 @@
 
 ;; Misc commands
 ;; =============
-
-(defn sibling-nodes [ed line]
-  (let [parent-lines (find-parent-lines ed line)
-        current-indent (c/line-indent ed line)
-        sibling-lines (filter #(when (= current-indent (c/line-indent ed %)) %)
-                              parent-lines)]
-    (map (partial line->node ed) sibling-lines)))
-
-(cmd/command {:command :kukui.save-level-type
-              :desc "kukui: Updates types for current level using config.level-type"
-              :exec (fn []
-                      (let [ed (pool/last-active)
-                            line (.-line (editor/cursor ed))
-                            siblings (mapcat #(or (text->tags (:text %)) (:text %))
-                                             (sibling-nodes ed line))
-                            [_ type] (config/read-config-line (editor/line ed line))]
-                        (config/save-config* {(keyword type) {:names siblings}}
-                                             :into-type)))})
 
 ;; move to sacha once descs land
 (cmd/command {:command :kukui.raise-node
@@ -432,15 +402,26 @@
                       (replace-children (pool/last-active)
                                         stamp-nodes))})
 
-(cmd/command {:command :kukui.save-config
-              :desc "kukui: Saves config with current children config with a merge"
-              :exec (fn []
-                     (config/save-config (pool/last-active) text->tag-group :replace-type))})
+(defn sibling-nodes [ed line]
+  (let [parent-lines (util/find-parent-lines ed line)
+        current-indent (c/line-indent ed line)
+        sibling-lines (filter #(when (= current-indent (c/line-indent ed %)) %)
+                              parent-lines)]
+    (map (partial line->node ed) sibling-lines)))
 
-(cmd/command {:command :kukui.reset-config
-              :desc "kukui: Resets config with current children config"
+(defmethod config/save :level-type [_ {:keys [editor value]}]
+  (let [line (.-line (editor/cursor editor))
+        ;; Doesn't tia ignore tag. Assume all siblings are tagged
+        siblings (mapcat #(text->tags (:text %))
+                         (sibling-nodes editor line))]
+    (config/merge-config {(keyword value) {:names siblings}}
+                         :into-type)))
+
+
+(cmd/command {:command :kukui.save-current-config
+              :desc "kukui: Saves config for the current line"
               :exec (fn []
-                     (config/save-config (pool/last-active) text->tag-group :reset))})
+                      (config/save-current-config (pool/last-active)))})
 
 (cmd/command {:command :kukui.toggle-descs
               :desc "kukui: Toggle visibility of descs of current children"

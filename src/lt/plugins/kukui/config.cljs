@@ -5,6 +5,7 @@
             [lt.objs.editor :as editor]
             [lt.objs.editor.pool :as pool]
             [clojure.set :as cset]
+            [lt.plugins.kukui.core :as kc]
             [lt.plugins.sacha.codemirror :as c]))
 
 (def unknown-type :unknown)
@@ -50,7 +51,8 @@
     ;; Assume vals are sequential?
     (apply into vals)))
 
-(defn save-config*
+;; user-config is assumed to be a :types map
+(defn merge-config
   [user-config merge-type]
   (let [new-config
         (case merge-type
@@ -64,16 +66,15 @@
     (notifos/set-msg! "Saved config")
     (def config new-config)))
 
-(defn save-config
-  "Updates :types in config depending on merge-type.
-  Currently only handles user cursor being on :types of a config"
-  [ed tag-group-fn merge-type]
+(defn tag-group-merge-config
+  "Updates :types in config using children nodes as tag groups."
+  [ed merge-type]
   (let [line (.-line (editor/cursor ed))
         children-lines (range (inc line)
                               (c/safe-next-non-child-line ed line))
         user-config (->> children-lines
                         (map #(editor/line ed %))
-                        (map (partial tag-group-fn config))
+                        (map (partial kc/text->tag-group config))
                         (remove #(let [no-parent (not (:parent-tag %))]
                                    (when no-parent
                                      (println "Skipping line with no parent-tag: " (pr-str %)))
@@ -81,7 +82,25 @@
                         (map #(vector (keyword (:parent-tag %))
                                       (->type-config (vec (:tags %)) (:default-tag %))))
                         (into {}))]
-    (save-config* user-config merge-type)))
+    (merge-config user-config merge-type)))
 
 (defn read-config-line [line]
-  (next (re-find #"^\s*(?::config)?\.([^:]+):\s*(\S+)$" line)))
+  (next (re-find #"^\s*(?::config)?\.([^:]+)(?::\s*(\S+))?$" line)))
+
+(defmulti save
+  "Saves config key differently depending on config key value."
+  (fn [config-key options] config-key))
+
+(defmethod save :default [config-key _]
+  (notifos/set-msg! (str "Config key " (pr-str config-key) " is not recognized.")
+                    {:class "error"}))
+
+(defmethod save :types [_ {:keys [editor value]}]
+  (tag-group-merge-config editor (keyword value)))
+
+(defn save-current-config
+  "Saves config of current line. Save behavior depends on config key."
+  [ed]
+  (let [line-text (editor/line ed (.-line (editor/cursor ed)))
+        [config-key config-val] (read-config-line line-text)]
+    (save (keyword config-key) {:value config-val :editor ed})))
