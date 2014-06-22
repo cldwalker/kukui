@@ -49,7 +49,7 @@
   (if (every? map? vals)
     (apply merge-with deep-merge vals)
     ;; Assume vals are sequential?
-    (apply into vals)))
+    (vec (distinct (apply into vals)))))
 
 ;; user-config is assumed to be a :types map
 (defn merge-config
