@@ -37,7 +37,7 @@
   [ed lines]
   (->> lines
        (map #(line->node ed %))
-       (map #(if (re-find #"^\s*:config\s*$" (:text %))
+       (map #(if (re-find #"^\s*:config" (:text %))
                (update-in % [:text] str " " tag-prefix ignore-tag) %))
        ;; [] needed to include last element
        (partition 2 1 [])
