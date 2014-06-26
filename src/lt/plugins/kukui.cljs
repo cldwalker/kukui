@@ -365,7 +365,7 @@
               :desc "kukui: Raises node to replace parent and sets it to parent's level"
               :exec (fn []
                       (let [ed (pool/last-active)
-                            parent-line (find-parent-line ed (.-line (editor/cursor ed)))]
+                            parent-line (util/find-parent-line ed (.-line (editor/cursor ed)))]
                         (editor/operation ed
                                           (fn []
                                             (c/delete-lines ed parent-line parent-line)
