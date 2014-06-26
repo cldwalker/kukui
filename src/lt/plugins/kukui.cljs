@@ -144,6 +144,27 @@
      {}
      tagged-counts)))
 
+
+(defn match-attribute-tag
+  [tag type-regex]
+  (re-find
+   (re-pattern (str "^" type-regex ":(\\S+)")) tag))
+
+(defn attribute-counts [nodes attr]
+  (println "Attribute:" attr)
+  (let [type-nodes (map (fn [node]
+                          (keep #(second (match-attribute-tag % (name attr)))
+                                (:tags node)))
+                        nodes)
+        attr-counts (reduce
+                     (fn [accum [value]]
+                       (update-in accum [value] inc))
+                     {}
+                     type-nodes)]
+    (println (count (remove empty? type-nodes)) "of"
+             (count type-nodes) "have" attr)
+    (prn attr-counts)))
+
 (defn pprint
   "Useful for printing list or vec of maps. Hack until actual cljs.pprint exists"
   [data]
@@ -157,7 +178,8 @@
                         (pprint (types-counts ed nil))
                         (prn (assoc (total-types-counts ed nil)
                                "untagged" (count (filter (comp empty? :tags) nodes))
-                               "nodes" (count nodes)))))})
+                               "nodes" (count nodes)))
+                        (attribute-counts nodes :type)))})
 
 (cmd/command {:command :kukui.all-types-counts
               :desc "kukui: Same as types-counts but for whole file"
