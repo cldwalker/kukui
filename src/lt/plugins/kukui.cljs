@@ -9,20 +9,11 @@
             [lt.plugins.kukui.selector :as selector]
             [lt.plugins.kukui.util :as util]
             [lt.plugins.kukui.config :as config]
-            [lt.plugins.kukui.core :refer [text->tags tag-prefix text->tag-group indent-nodes]]
+            [lt.plugins.kukui.core :refer [text->tags tag-prefix text->tag-group indent-nodes
+                                           desc-node? add-attributes-to-nodes]]
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 
-(defn desc-node? [node]
-  (re-find #"^\s*\+" (:text node)))
-
-(defn parent-node? [curr next]
-  (when next
-    (and (> (:indent next) (:indent curr))
-         (not (desc-node? next)))))
-
-(defn add-node-with-tags [nodes node tags]
-  (conj nodes (assoc node :tags (set tags))))
 
 (defn line->node [ed line]
   {:line line
@@ -31,49 +22,15 @@
 
 (def ignore-tag "ignore")
 
-(defn ->tagged-nodes*
+(defn ->tagged-nodes
   "Returns nodes with :line, :indent, :text and :tags properties.
   Tags are picked up from parents and any words starting with '#'."
   [ed lines]
-  (->> lines
-       (map #(line->node ed %))
-       (map #(if (re-find #"^\s*:config" (:text %))
-               (update-in % [:text] str " " tag-prefix ignore-tag) %))
-       ;; [] needed to include last element
-       (partition 2 1 [])
-       (reduce
-        (fn [accum [curr next]]
-          (cond
-           (parent-node? curr next)
-           (update-in accum [:tags]
-                      #(add-node-with-tags
-                        (vec (remove (fn [tag] (= (:indent tag) (:indent curr))) %))
-                        curr
-                        (text->tags (:text curr))))
-
-           (desc-node? curr)
-           (update-in accum
-                      [:nodes (dec (count (:nodes accum))) :desc]
-                      (fnil conj [])
-                      curr)
-           :else
-           (update-in accum [:nodes]
-                      (fn [nodes]
-                        (add-node-with-tags
-                         nodes
-                         curr
-                         (concat (mapcat :tags (filter #(< (:indent %) (:indent curr)) (:tags accum)))
-                                 (text->tags (:text curr))))))))
-        ;; :nodes - contains all nodes/non-tag lines in the given lines
-        ;; :tags - contains all tags but only keeps the latest tag for a given indent
-        {:tags #{} :nodes []})
-       :nodes))
-
-
-(defn ->tagged-nodes
-  "Same as ->tagged-nodes* but respects ignore-tag"
-  [ed lines]
-  (let [nodes (->tagged-nodes* ed lines)]
+  (let [nodes (->> lines
+                   (map #(line->node ed %))
+                   (map #(if (re-find #"^\s*:config" (:text %))
+                           (update-in % [:text] str " " tag-prefix ignore-tag) %))
+                   add-attributes-to-nodes)]
     (remove #(contains? (:tags %) ignore-tag) nodes)))
 
 (defn ->tagged-counts

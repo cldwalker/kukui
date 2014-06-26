@@ -68,3 +68,50 @@
               (map (fn [x] (indent-node x desc-indent))
                    (:desc %))))
      nodes)))
+
+
+(defn desc-node? [node]
+  (re-find #"^\s*\+" (:text node)))
+
+(defn parent-node? [curr next]
+  (when next
+    (and (> (:indent next) (:indent curr))
+         (not (desc-node? next)))))
+
+(defn add-node-with-tags [nodes node tags]
+  (conj nodes (assoc node :tags (set tags))))
+
+(defn add-attributes-to-nodes
+  "Adds :tags and :desc to nodes"
+  [nodes]
+  (->> nodes
+       ;; [] needed to include last element
+       (partition 2 1 [])
+       (reduce
+        (fn [accum [curr next]]
+          (cond
+           (parent-node? curr next)
+           (update-in accum [:tags]
+                      #(add-node-with-tags
+                        (vec (remove (fn [tag] (= (:indent tag) (:indent curr))) %))
+                        curr
+                        (text->tags (:text curr))))
+
+           (desc-node? curr)
+           (update-in accum
+                      [:nodes (dec (count (:nodes accum))) :desc]
+                      (fnil conj [])
+                      curr)
+           :else
+           (update-in accum [:nodes]
+                      (fn [nodes]
+                        (add-node-with-tags
+                         nodes
+                         curr
+                         (concat (mapcat :tags (filter #(< (:indent %) (:indent curr)) (:tags accum)))
+                                 (text->tags (:text curr))))))))
+        ;; :nodes - contains all nodes/non-tag lines in the given lines
+        ;; :tags - contains all tags but only keeps the latest tag for a given indent
+        {:tags #{} :nodes []})
+       :nodes))
+

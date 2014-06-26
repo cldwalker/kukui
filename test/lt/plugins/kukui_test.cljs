@@ -38,3 +38,17 @@
         {:text "    child2"
          :desc [{:text "      + some desc"}]}]
        4 2 1))))
+
+
+(deftest add-attributes-to-nodes
+  (is
+   (let [nodes [{:line 0 :indent 0 :text "#p0"}
+                {:line 1 :indent 2 :text "  eat"}
+                {:line 2 :indent 2 :text "  #?"}
+                {:line 3 :indent 4 :text "    sleep #periodic"}
+                {:line 4 :indent 6 :text "      + FULLTEXT"}]]
+     (= [(assoc (nth nodes 1) :tags #{"p0"})
+         (assoc (nth nodes 3)
+           :tags #{"p0" "?" "periodic"}
+           :desc [(nth nodes 4)])]
+        (k/add-attributes-to-nodes nodes)))))
