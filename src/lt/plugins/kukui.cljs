@@ -47,7 +47,7 @@
            (parent-node? curr next)
            (update-in accum [:tags]
                       #(add-node-with-tags
-                        (remove (fn [tag] (= (:indent tag) (:indent curr))) %)
+                        (vec (remove (fn [tag] (= (:indent tag) (:indent curr))) %))
                         curr
                         (text->tags (:text curr))))
 
@@ -62,8 +62,8 @@
                         (add-node-with-tags
                          nodes
                          curr
-                         (into (mapcat :tags (filter #(< (:indent %) (:indent curr)) (:tags accum)))
-                               (text->tags (:text curr))))))))
+                         (concat (mapcat :tags (filter #(< (:indent %) (:indent curr)) (:tags accum)))
+                                 (text->tags (:text curr))))))))
         ;; :nodes - contains all nodes/non-tag lines in the given lines
         ;; :tags - contains all tags but only keeps the latest tag for a given indent
         {:tags #{} :nodes []})
@@ -157,8 +157,8 @@
                                 (:tags node)))
                         nodes)
         attr-counts (reduce
-                     (fn [accum [value]]
-                       (update-in accum [value] inc))
+                     (fn [accum values]
+                       (update-in accum [(last values)] inc))
                      {}
                      type-nodes)]
     (println (count (remove empty? type-nodes)) "of"
