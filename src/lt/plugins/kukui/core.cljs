@@ -11,8 +11,15 @@
 (def tag-pattern
   "Regex for pulling out tags with tag-prefix. To escape having a tag parsed,
   put a backslash before it e.g. \\#escaped"
-  (re-pattern (str "(?:[^\\\\]|^)"
-                   "(" tag-prefix "[^ \\t\\n.,;\\*]+" ")")))
+  (let [disallowed-chars " \\t\\n,;\\*"]
+    (re-pattern (str "(?:[^\\\\]|^)"
+                   ;; All but last character can have '.' or ':'
+                   "(" tag-prefix
+                   "[^" disallowed-chars "]+"
+                   "[^" disallowed-chars ".:]"
+                   ;; Allow for 1 char tags still
+                   "|" tag-prefix "[^" disallowed-chars ".:]"
+                   ")"))))
 
 (defn text->tags [text]
   (map
