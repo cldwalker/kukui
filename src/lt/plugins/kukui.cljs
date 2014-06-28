@@ -102,25 +102,19 @@
      tagged-counts)))
 
 
-(defn match-attribute-tag
-  [tag type-regex]
-  (re-find
-   (re-pattern (str "^" type-regex ":(\\S+)")) tag))
+(defn attribute-counts* [nodes attr]
+  (println "Attribute:" attr "exists for"
+           (count (filter attr nodes)) "of"
+           (count nodes) "nodes")
+  (prn (reduce
+        (fn [accum val]
+          (update-in accum [val] inc))
+        {}
+        (map attr nodes))))
 
-(defn attribute-counts [nodes attr]
-  (println "Attribute:" attr)
-  (let [type-nodes (map (fn [node]
-                          (keep #(second (match-attribute-tag % (name attr)))
-                                (:tags node)))
-                        nodes)
-        attr-counts (reduce
-                     (fn [accum values]
-                       (update-in accum [(last values)] inc))
-                     {}
-                     type-nodes)]
-    (println (count (remove empty? type-nodes)) "of"
-             (count type-nodes) "have" attr)
-    (prn attr-counts)))
+(defn attribute-counts [nodes]
+  (doseq [attr (-> (mapcat keys nodes) set (disj :desc :tags :indent :line :text))]
+    (attribute-counts* nodes attr)))
 
 (defn pprint
   "Useful for printing list or vec of maps. Hack until actual cljs.pprint exists"
@@ -136,7 +130,7 @@
                         (prn (assoc (total-types-counts ed nil)
                                "untagged" (count (filter (comp empty? :tags) nodes))
                                "nodes" (count nodes)))
-                        (attribute-counts nodes :type)))})
+                        (attribute-counts nodes)))})
 
 (cmd/command {:command :kukui.all-types-counts
               :desc "kukui: Same as types-counts but for whole file"
@@ -148,7 +142,8 @@
                         (pprint (types-counts ed lines))
                         (prn (assoc (total-types-counts ed lines)
                                "untagged" (count (filter (comp empty? :tags) nodes))
-                               "nodes" (count nodes)))))})
+                               "nodes" (count nodes)))
+                        (attribute-counts nodes)))})
 
 
 (cmd/command {:command :kukui.debug-nodes
