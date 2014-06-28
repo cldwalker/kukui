@@ -120,5 +120,15 @@
         ;; :nodes - contains all nodes/non-tag lines in the given lines
         ;; :tags - contains all tags but only keeps the latest tag for a given indent
         {:tags #{} :nodes []})
-       :nodes))
-
+       :nodes
+       (mapv
+        (fn [node]
+          (let [[tags attribute-tags] ((juxt remove filter)
+                                       #(-> % (.indexOf ":") (> -1))
+                                       (:tags node))]
+            (merge
+             (->> attribute-tags
+                  (map #(s/split % #":"))
+                  (map (fn [[k v]] [(keyword k) v]))
+                  (into {}))
+             (assoc node :tags (set tags))))))))
