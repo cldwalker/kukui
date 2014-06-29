@@ -11,6 +11,7 @@
             [lt.plugins.kukui.config :as config]
             [lt.plugins.kukui.core :refer [text->tags tag-prefix text->tag-group indent-nodes
                                            desc-node? add-attributes-to-nodes]]
+            [lt.plugins.kukui.db :as db]
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 
@@ -144,7 +145,6 @@
                                "untagged" (count (filter (comp empty? :tags) nodes))
                                "nodes" (count nodes)))
                         (attribute-counts nodes)))})
-
 
 (cmd/command {:command :kukui.debug-nodes
               :desc "kukui: prints nodes for current branch or selection"
@@ -408,3 +408,37 @@
                                        (not (desc-node? (line->node ed %)))
                                        (desc-node? (line->node ed (inc %))))
                                      (range line end-line))))})
+
+(cmd/command {:command :kukui.save-file-to-db
+              :desc "kukui: Saves types and entities of types to db"
+              :exec (fn []
+                      (let [ed (pool/last-active)
+                            lines (range (editor/first-line ed)
+                                         (inc (editor/last-line ed)))
+                            nodes (ed->nodes ed lines)
+                            type-records (->> nodes
+                                              (keep :type)
+                                              distinct
+                                              (map #(hash-map :name % :type "type")))
+                            entity-records (mapcat (fn [[type count-map]]
+                                                     (->> count-map
+                                                          keys
+                                                          (keep identity)
+                                                          (map #(hash-map :name % :type (name type)))))
+                                                   (types-counts ed lines))
+                            ;; _ (def entity-records entity-records)
+                            ;; Avoid dups from type:*
+                            entity-records (remove #(and (= "unknown" (:type %))
+                                                         (contains? (set (map :name type-records)) (:name %)))
+                                                   entity-records)]
+                        (apply db/create! type-records)
+                        (println "Saving" (count type-records) "types")
+                        (prn entity-records)
+                        (apply db/create! entity-records)
+                        (println "Saving" (count entity-records) "entities")))})
+
+(comment
+  (->> entity-records
+       first
+       second))
+
