@@ -420,22 +420,26 @@
                                               (keep :type)
                                               distinct
                                               (map #(hash-map :name % :type "type")))
+                            note-entity-records (->> nodes
+                                                     (filter :name)
+                                                     (map #(select-keys % [:name :type])))
                             entity-records (mapcat (fn [[type count-map]]
                                                      (->> count-map
                                                           keys
                                                           (keep identity)
                                                           (map #(hash-map :name % :type (name type)))))
                                                    (types-counts ed lines))
-                            ;; _ (def entity-records entity-records)
-                            ;; Avoid dups from type:*
-                            entity-records (remove #(and (= "unknown" (:type %))
-                                                         (contains? (set (map :name type-records)) (:name %)))
-                                                   entity-records)]
+                            known-names (set (map :name (concat note-entity-records type-records)))
+                            ;; Update unknown to tia other types + tags outside of config
+                            config-entity-records (remove #(and (= "unknown" (:type %))
+                                                                (contains? known-names (:name %)))
+                                                          entity-records)]
                         (apply db/create! type-records)
                         (println "Saving" (count type-records) "types")
-                        (prn entity-records)
-                        (apply db/create! entity-records)
-                        (println "Saving" (count entity-records) "entities")))})
+                        (apply db/create! config-entity-records)
+                        (println "Saving" (count config-entity-records) "config entities")
+                        (apply db/create! note-entity-records)
+                        (println "Saving" (count note-entity-records) "note entities")))})
 
 (comment
   (->> entity-records

@@ -20,6 +20,6 @@
 (comment
   (->> (:db @store)
       (group-by :type)
-      (map (fn [[k v]] [k (count v)])))
+      (map (fn [[k v]] [k (map :name v)])))
   (create! {:name "type" :desc "wtf"})
   )
