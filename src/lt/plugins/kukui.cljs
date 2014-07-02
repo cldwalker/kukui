@@ -423,17 +423,15 @@
                             note-entity-records (->> nodes
                                                      (filter :name)
                                                      (map #(select-keys % [:name :type])))
-                            entity-records (mapcat (fn [[type count-map]]
-                                                     (->> count-map
-                                                          keys
-                                                          (keep identity)
-                                                          (map #(hash-map :name % :type (name type)))))
-                                                   (types-counts ed lines))
                             known-names (set (map :name (concat note-entity-records type-records)))
-                            ;; Update unknown to tia other types + tags outside of config
-                            config-entity-records (remove #(and (= "unknown" (:type %))
-                                                                (contains? known-names (:name %)))
-                                                          entity-records)]
+                            node-config (config/dynamic-config nodes)
+                            ;; Update :unknown to tia other types + tags outside of config
+                            node-config (update-in node-config [:types :unknown :names] #(apply disj % known-names))
+                            config-entity-records (mapcat (fn [[type type-map]]
+                                                            (->> type-map
+                                                                 :names
+                                                                 (map #(hash-map :name % :type (name type)))))
+                                                          (:types node-config))]
                         (apply db/create! type-records)
                         (println "Saving" (count type-records) "types")
                         (apply db/create! config-entity-records)
