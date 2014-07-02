@@ -431,9 +431,17 @@
                                                             (->> type-map
                                                                  :names
                                                                  (map #(hash-map :name % :type (name type)))))
-                                                          (:types node-config))]
+                                                          (:types node-config))
+                            config-type-records (->> (:types node-config)
+                                                     keys
+                                                     (map name)
+                                                     (#(apply disj (set %) (map :name type-records)))
+                                                     (map #(hash-map :name % :type "type")))]
+                        (prn config-type-records)
                         (apply db/create! type-records)
                         (println "Saving" (count type-records) "types")
+                        (apply db/create! config-type-records)
+                        (println "Saving" (count config-type-records) "config types")
                         (apply db/create! config-entity-records)
                         (println "Saving" (count config-entity-records) "config entities")
                         (apply db/create! note-entity-records)
