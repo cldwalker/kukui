@@ -222,8 +222,14 @@
         tags-nodes (save-tags tags-nodes)
         new-nodes (mapcat
                    (fn [tag]
-                     (when-let [children (get tags-nodes tag)]
-                       (into [{:type-tag true :text (str tag-prefix (name tag))}] children)))
+                     (let [children (if (-> tag (.indexOf type-delimiter) (> -1))
+                                      ;; can't use a tag index for attr queries
+                                      (let [[attr value] (s/split tag (re-pattern type-delimiter))
+                                            attr (keyword attr)]
+                                        (filter #(= value (attr %)) nodes))
+                                      (get tags-nodes tag))]
+                       (when (seq children)
+                         (into [{:type-tag true :text (str tag-prefix (name tag))}] children))))
                    (:names view-config))
         indented-nodes (indent-nodes new-nodes
                                      (c/line-indent ed (.-line (editor/cursor ed)))
@@ -296,7 +302,7 @@
 
 (defn ->query-view
   "Create a view given a query. There are two formats.
-  With parent:    #type: tag1, tag2
+  With parent:    #type: tag1, tag2, type:note
   Without parent: tag1, tag2"
   [ed query & {:keys [level view-fn types-config lines]
                :or {level 1
