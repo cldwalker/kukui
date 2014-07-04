@@ -10,7 +10,7 @@
             [lt.plugins.kukui.util :as util]
             [lt.plugins.kukui.config :as config]
             [lt.plugins.kukui.core :refer [text->tags tag-prefix text->tag-group indent-nodes
-                                           desc-node? add-attributes-to-nodes]]
+                                           desc-node? add-attributes-to-nodes type-delimiter]]
             [lt.plugins.kukui.db :as db]
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
@@ -208,7 +208,11 @@
   [ed type-or-view & {:keys [level query-tag lines] :or {level 1}}]
   (let [nodes (ed->nodes ed lines)
         nodes (if query-tag
-                (filter #(contains? (:tags %) query-tag) nodes)
+                (if (-> query-tag (.indexOf type-delimiter) (> -1))
+                  (let [[attr value] (s/split query-tag (re-pattern type-delimiter))
+                        attr (keyword attr)]
+                    (filter #(= value (attr %)) nodes))
+                  (filter #(contains? (:tags %) query-tag) nodes))
                 nodes)
         view-config (if (map? type-or-view)
                       type-or-view

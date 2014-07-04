@@ -21,5 +21,8 @@
   (->> (:db @store)
       (group-by :type)
       (map (fn [[k v]] [k (map :name v)])))
+  (->> (:db @store)
+       (filter #(= "fn" (:type %)))
+       (map :name))
   (create! {:name "type" :desc "wtf"})
   )

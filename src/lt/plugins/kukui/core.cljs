@@ -5,6 +5,7 @@
 
 (def default-tag-char "*")
 (def tag-prefix "#")
+(def type-delimiter ":")
 
 ;; This regex returns pairs of matches but only the latter is useful. This
 ;; is a necessary evil caused by no negative-lookbehind in JS
@@ -124,11 +125,11 @@
        (mapv
         (fn [node]
           (let [[tags attribute-tags] ((juxt remove filter)
-                                       #(-> % (.indexOf ":") (> -1))
+                                       #(-> % (.indexOf type-delimiter) (> -1))
                                        (:tags node))]
             (merge
              (->> attribute-tags
-                  (map #(s/split % #":"))
+                  (map #(s/split % (re-pattern type-delimiter)))
                   (map (fn [[k v]] [(keyword k) v]))
                   (into {}))
              (assoc node :tags (set tags))))))))
