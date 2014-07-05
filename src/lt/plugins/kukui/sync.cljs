@@ -1,6 +1,9 @@
 (ns lt.plugins.kukui.sync
   "Syncs a file to a db"
-  (:require [lt.plugins.kukui.db :as db]))
+  (:require [lt.plugins.kukui.db :as db]
+            [lt.plugins.kukui.node :as node]
+            [lt.objs.editor.pool :as pool]
+            [lt.objs.command :as cmd]))
 
 (defn name-id-map []
   (into {} (db/q '[:find ?n ?e
@@ -76,10 +79,18 @@
        must-require-type
        db/transact!))
 
-(comment
-  (def nodes lt.plugins.kukui/nodes)
+(cmd/command {:command :kukui.sync-file-to-db
+              :desc "kukui: Syncs file to db"
+              :exec (fn []
+                      (let [ed (pool/last-active)
+                            nodes (node/ed->nodes ed)]
+                        (def nodes nodes)
+                        #_(sync nodes)))})
 
-  (sync lt.plugins.kukui/nodes)
+
+(comment
+  (-> nodes)
+  (sync nodes)
 
   (expand-tags [{:text "ok" :tags #{"dude"}}])
   (def tx (db/transact! [{:type "lang" :name "ruby"} {:text "woah" :tags 5}]))

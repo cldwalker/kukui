@@ -10,44 +10,24 @@
             [lt.plugins.kukui.util :as util]
             [lt.plugins.kukui.config :as config]
             [lt.plugins.kukui.core :refer [text->tags tag-prefix text->tag-group indent-nodes
-                                           desc-node? add-attributes-to-nodes type-delimiter]]
+                                           desc-node? type-delimiter]]
+            [lt.plugins.kukui.node :refer [ed->nodes line->node]]
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 
 
-(defn line->node [ed line]
-  {:line line
-   :indent (c/line-indent ed line)
-   :text (editor/line ed line)})
-
-(def ignore-tag "ignore")
-
-(defn ->tagged-nodes
-  "Returns nodes with :line, :indent, :text and :tags properties.
-  Tags are picked up from parents and any words starting with '#'."
-  [ed lines]
-  (let [nodes (->> lines
-                   (map #(line->node ed %))
-                   (map #(if (re-find #"^\s*:config" (:text %))
-                           (update-in % [:text] str " " tag-prefix ignore-tag) %))
-                   add-attributes-to-nodes)]
-    (remove #(contains? (:tags %) ignore-tag) nodes)))
-
 (defn ->tagged-counts
   "For given lines, returns map of tags and how many nodes have that tag."
   [ed lines]
-  (->> (->tagged-nodes ed lines)
+  (->> (ed->nodes ed lines)
        (mapcat :tags)
        frequencies))
 
 (cmd/command {:command :kukui.tag-counts
               :desc "kukui: tag counts in current branch's nodes"
               :exec (fn []
-                      (let [ed (pool/last-active)
-                            line (.-line (editor/cursor ed))]
-                        (prn (->tagged-counts
-                         ed
-                         (range line (c/safe-next-non-child-line ed line))))))})
+                      (let [ed (pool/last-active)]
+                        (prn (->tagged-counts ed nil))))})
 
 
 (defn type-nodes->tag-map
@@ -64,17 +44,6 @@
    nodes))
 
 (def type-counts (partial type-nodes->tag-map #(update-in %1 [%2] inc)))
-
-(defn ed->nodes
-  ([ed] (ed->nodes ed nil))
-  ([ed lines]
-   (let [lines (or lines
-                   (if-let [selection (editor/selection-bounds ed)]
-                     (range (get-in selection [:from :line])
-                            (inc (get-in selection [:to :line])))
-                     (let [line (.-line (editor/cursor ed))]
-                       (range line (c/safe-next-non-child-line ed line)))))]
-     (->tagged-nodes ed lines))))
 
 (defn types-counts [ed lines]
   (let [nodes (ed->nodes ed lines)
