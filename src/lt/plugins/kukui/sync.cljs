@@ -35,15 +35,20 @@
 
 (def unknown-type "unknown")
 
+(defn ->tag-id
+  "Given a tag name and a number of data structures it could be in,
+  return an existing or new :db/id for it"
+  [entities existing-tags new-tags tag-name]
+  (or (get existing-tags tag-name)
+      (get @new-tags tag-name)
+      (first (filter #(= (:name %) tag-name) entities))
+      (let [id (db/tempid)]
+        (swap! new-tags assoc % id)
+        id)))
+
 (defn expand-tags [entities]
-  (let [existing-tags (name-id-map)
-        new-tags (atom {})
-        tag-id #(or (get existing-tags %)
-                    (get @new-tags %)
-                    (first (filter (fn [ent] (= (:name ent) %)) entities))
-                    (let [id (db/tempid)]
-                      (swap! new-tags assoc % id)
-                      id))
+  (let [new-tags (atom {})
+        tag-id (partial ->tag-id entities (name-id-map) new-tags)
         entities-with-tags (doall
                             (->> entities
                                  (map #(assoc % :db/id (db/tempid)))
@@ -72,21 +77,21 @@
        db/transact!))
 
 (comment
-  (->> lt.plugins.kukui/nodes
-       count)
+  (def nodes lt.plugins.kukui/nodes)
 
   (sync lt.plugins.kukui/nodes)
 
-
+  (expand-tags [{:text "ok" :tags #{"dude"}}])
   (def tx (db/transact! [{:type "lang" :name "ruby"} {:text "woah" :tags 5}]))
 
   ;; counts by type
-  (db/q '[:find ?type (count ?e)
-       :where
-       [?e :type ?type]])
+  (sort-by (comp - second)
+           (db/q '[:find ?type (count ?e)
+                   :where
+                   [?e :type ?type]]))
 
   ;; counts by tag - FIX
-  (db/q '[:find ?tag (count ?e)
+  (db/q '[:find ?e
           :where
           [?e :tags ?t]
           [?t :name ?tag]])
@@ -101,8 +106,11 @@
 
   ;; total count
   (db/q '[:find (count ?e)
-       :where
-       [?e]])
+          :where [?e]])
+
+  ;; find all
+  (db/qe '[:find ?e
+           :where [?e]])
 
   ;; last-tx
   (:tx-data (last @reports))
