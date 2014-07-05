@@ -11,7 +11,6 @@
             [lt.plugins.kukui.config :as config]
             [lt.plugins.kukui.core :refer [text->tags tag-prefix text->tag-group indent-nodes
                                            desc-node? add-attributes-to-nodes type-delimiter]]
-            [lt.plugins.kukui.db :as db]
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 
@@ -447,15 +446,7 @@
                                                      (map name)
                                                      (#(apply disj (set %) (map :name type-records)))
                                                      (map #(hash-map :name % :type "type")))]
-                        (prn config-type-records)
-                        (apply db/create! type-records)
-                        (println "Saving" (count type-records) "types")
-                        (apply db/create! config-type-records)
-                        (println "Saving" (count config-type-records) "config types")
-                        (apply db/create! config-entity-records)
-                        (println "Saving" (count config-entity-records) "config entities")
-                        (apply db/create! note-entity-records)
-                        (println "Saving" (count note-entity-records) "note entities")))})
+                        ))})
 
 (comment
   (->> entity-records

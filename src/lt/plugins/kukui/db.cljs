@@ -1,28 +1,27 @@
 (ns lt.plugins.kukui.db
-  "Experimental db for types and tags")
+  "In-memory DB for nodes, types, things"
+  (:require [datascript :as d]))
 
-(def store (atom {:names #{} :db []}))
+(def conn (d/create-conn {:tags {:db/valueType :db.type/ref
+                                 :db/cardinality :db.cardinality/many}}))
+(def reports (atom []))
+(d/listen! conn :db-history #(swap! reports conj %))
 
-(defn create! [& records]
-  (let [names (:names @store)
-        dups (filter #(and (:name %) (contains? names (:name %))) records)]
-    (when (seq dups)
-      (prn "DUPS" dups)
-      (throw (ex-info (str "Names must be unique: " (map :name dups))
-                      {:names (map :name dups)})))
-    (swap! store
-           #(-> %
-                (update-in [:db] into records)
-                (update-in [:names] into (keep :name records))))))
+(defn transact! [records]
+  (d/transact! conn records))
 
-(create! {:name "type" :type "type"})
+(defn q [query & args]
+  (apply d/q query @conn args))
 
-(comment
-  (->> (:db @store)
-      (group-by :type)
-      (map (fn [[k v]] [k (map :name v)])))
-  (->> (:db @store)
-       (filter #(= "fn" (:type %)))
-       (map :name))
-  (create! {:name "type" :desc "wtf"})
-  )
+(defn entity [id]
+  (d/entity @conn id))
+
+(defn qe [query & args]
+  (map #(entity (first %))
+       (apply q query args)))
+
+(let [counter (atom 0)]
+  (defn tempid []
+    (swap! counter dec)))
+
+(transact! [{:name "type" :type "type"}])
