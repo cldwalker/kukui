@@ -2,7 +2,10 @@
   "Syncs a file to a db"
   (:require [lt.plugins.kukui.db :as db]
             [lt.plugins.kukui.node :as node]
+            [lt.plugins.kukui.util :as util]
+            [lt.objs.editor :as editor]
             [lt.objs.editor.pool :as pool]
+            [clojure.set :as cset]
             [lt.objs.command :as cmd]))
 
 (defn name-id-map []
@@ -71,28 +74,92 @@
     #(hash-map :name % :type "type")
     (set (keep :type entities)))))
 
-(defn sync [nodes]
+(defn node-diff [nodes1 nodes2]
+  (let [old-nodes (into {} (map (juxt :text identity) nodes1))
+        changes {:deleted (cset/difference (set nodes1) (set nodes2))}]
+    (reduce
+     (fn [accum node]
+       (let [old-node (get old-nodes (:text node))]
+         (if (nil? old-node)
+           ;; could be updated text
+           (update-in accum [:added] (fnil conj []) node)
+           (if (not= (:line old-node) (:line node))
+             (-> accum
+                 (update-in [:updated] (fnil conj [])
+                            {:line (:line old-node)
+                             :new-line (:line node)})
+                 (update-in [:deleted] disj old-node))
+             accum))))
+     changes
+     nodes2)))
+
+(defn ->new-entities [nodes]
   (->> nodes
        add-types
        expand-tags
        must-have-unique-name
-       must-require-type
-       db/transact!))
+       must-require-type))
+
+(defn add-ids-by-line [nodes]
+  (let [line-entities (into {} (db/q '[:find ?l ?e
+                                       :where [?e :line ?l]]))
+
+        ents (map #(assoc % :db/id (get line-entities (:line %)))
+                  nodes)
+        invalid-lines (map :line (filter #(nil? (:db/id %)) ents))]
+    (when (seq invalid-lines)
+      (prn "Invalid lines" invalid-lines)
+      (throw (ex-info (str "Cannot find entities with these lines: " (pr-str invalid-lines))
+                      {:lines invalid-lines})))
+    ents))
+
+(defn sync [nodes file]
+  (let [{:keys [added deleted updated]} (node-diff (-> @last-edits (get file) last)
+                                                   nodes)
+        new-entities (->new-entities added)
+        updated-entities (->> updated
+                              add-ids-by-line
+                              (mapv #(hash-map :db/id (:db/id %)
+                                               :line (:new-line %))))
+        deleted-entities (->> deleted
+                              add-ids-by-line
+                              (mapv #(vector :db.fn/retractEntity (:db/id %))))]
+    (println "Added/deleted/updated: "
+             (count new-entities) "/"
+             (count deleted-entities) "/"
+             (count updated-entities))
+    ;; Must be separate since there may be overlap
+    (db/transact! deleted-entities)
+    (db/transact! (into updated-entities new-entities))))
+
+(def last-edits
+  "Maps files to their last few node snapshots.
+  Used to determine what changed since last edit."
+  (atom {}))
 
 (cmd/command {:command :kukui.sync-file-to-db
               :desc "kukui: Syncs file to db"
               :exec (fn []
                       (let [ed (pool/last-active)
-                            nodes (node/ed->nodes ed)]
+                            lines (range (editor/first-line ed)
+                                         (inc (editor/last-line ed)))
+                            nodes (node/ed->nodes ed lines)
+                            file (util/current-file)]
                         (def nodes nodes)
-                        #_(sync nodes)))})
+                        (sync nodes file)
+                        (swap! last-edits update-in [file]
+                               #(concat (take-last 2 %)
+                                        (list nodes)))))})
 
 
 (comment
-  (-> nodes)
-  (sync nodes)
-
-  (expand-tags [{:text "ok" :tags #{"dude"}}])
+  ;; diff
+  (def current-edits (-> @last-edits vals first))
+  (-> current-edits count)
+  (def nd (apply node-diff (take-last 2 current-edits)))
+  (->> nd :deleted )
+  (diff nil (last current-edits))
+  (sync nodes "/Users/me/docs/notes/comp/clojure.otl")
   (def tx (db/transact! [{:type "lang" :name "ruby"} {:text "woah" :tags 5}]))
 
   ;; counts by type
@@ -102,7 +169,7 @@
                    [?e :type ?type]]))
 
   ;; counts by tag - FIX
-  (db/q '[:find ?e
+  (db/q '[:find ?tag (count ?e)
           :where
           [?e :tags ?t]
           [?t :name ?tag]])
@@ -130,6 +197,6 @@
   ;; update
   (db/transact! [{:db/id 128 :type "plang"}])
   ;; delete
-  (db/transact! [[:db.fn/retractEntity 551]])
+  (db/transact! [[:db.fn/retractEntity 2]])
 
   )

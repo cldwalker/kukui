@@ -1,5 +1,6 @@
 (ns lt.plugins.kukui.util
   (:require [lt.objs.editor :as editor]
+            [lt.objs.editor.pool :as pool]
             [lt.plugins.sacha.codemirror :as c]))
 
 (defn insert-at-next-line
@@ -21,3 +22,6 @@
     (range parent-line (c/safe-next-non-child-line ed parent-line))
     ;; If no parent, assume at top level and search whole file
     (range (editor/first-line ed) (inc (editor/last-line ed)))))
+
+(defn current-file []
+  (-> @(pool/last-active) :info :path))

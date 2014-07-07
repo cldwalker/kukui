@@ -25,3 +25,8 @@
     (swap! counter dec)))
 
 (transact! [{:name "type" :type "type"}])
+
+
+(comment
+ (transact! [{:db/id -1 :name "dude" :tags -2} {:db/id -2 :name "cool"}])
+  )
