@@ -12,6 +12,7 @@
             [lt.plugins.kukui.core :refer [text->tags tag-prefix text->tag-group indent-nodes
                                            desc-node? type-delimiter]]
             [lt.plugins.kukui.node :refer [ed->nodes line->node]]
+            [lt.plugins.kukui.sync :as sync]
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 

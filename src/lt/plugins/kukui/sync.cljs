@@ -138,7 +138,6 @@
                   (list nodes))))
 
 (comment
-  (reset! last-edits {})
   ;; diff
   (def current-edits (-> @last-edits vals first))
   (-> current-edits count)

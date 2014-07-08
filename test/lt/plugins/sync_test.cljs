@@ -13,4 +13,5 @@
            (db/entity eid)))))
 
 (comment
+  (reset! sync/last-edits {})
   (:max-eid (:db-after (last @db/reports))))
