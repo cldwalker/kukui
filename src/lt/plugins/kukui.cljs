@@ -428,7 +428,11 @@
                             nodes (ed->nodes ed lines)
                             file (util/current-file)]
                         (def nodes nodes)
-                        (sync/sync nodes file)
+                        (try
+                          (sync/sync nodes file)
+                          (catch :default e
+                            (notifos/set-msg! (str "Failed to sync:" e) {:class "error"})
+                            (prn e (ex-data e))))
                         (sync/save-latest-edit nodes file)))})
 
 (comment
