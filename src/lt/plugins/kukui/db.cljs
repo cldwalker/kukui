@@ -11,6 +11,10 @@
 (defn q [query & args]
   (apply d/q query @conn args))
 
+(defn qf [query & args]
+  (map first
+       (apply q query args)))
+
 (defn entity [id]
   (d/entity @conn id))
 

@@ -4,8 +4,9 @@
             [clojure.set :as cset]))
 
 (defn name-id-map []
-  (into {} (db/q '[:find ?n ?e
-                   :where [?e :name ?n]])))
+  (into {} (remove (comp nil? first)
+                   (db/q '[:find ?n ?e
+                           :where [?e :name ?n]]))))
 
 (defn must-have-unique-name [entities]
   (let [existing-tags (name-id-map)
@@ -63,11 +64,14 @@
           entities-with-tags)))
 
 (defn add-types [entities]
-  (into
-   entities
-   (map
-    #(hash-map :name % :type "type")
-    (set (keep :type entities)))))
+  (let [existing-types (set (db/qf '[:find ?type
+                                     :where [?e :type ?type]]))]
+    (->> entities
+         (keep :type)
+         set
+         (remove #(contains? existing-types %))
+         (map #(hash-map :name % :type "type"))
+         (into entities))))
 
 (defn node-diff [nodes1 nodes2]
   (let [old-nodes (into {} (map (juxt :text identity) nodes1))
@@ -143,7 +147,6 @@
   (-> current-edits count)
   (def nd (apply node-diff (take-last 2 current-edits)))
   (->> nd :deleted )
-  (diff nil (last current-edits))
   (sync nodes "/Users/me/docs/notes/comp/clojure.otl")
   (def tx (db/transact! [{:type "lang" :name "ruby"} {:text "woah" :tags 5}]))
 
