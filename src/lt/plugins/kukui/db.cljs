@@ -2,10 +2,8 @@
   "In-memory DB for nodes, types, things"
   (:require [datascript :as d]))
 
-(def conn (d/create-conn {:tags {:db/valueType :db.type/ref
-                                 :db/cardinality :db.cardinality/many}}))
-(def reports (atom []))
-(d/listen! conn :db-history #(swap! reports conj %))
+(def conn "A datascript connection" nil)
+(def reports "Holds a history of all entities through their TxReports" (atom []))
 
 (defn transact! [records]
   (d/transact! conn records))
@@ -24,8 +22,14 @@
   (defn tempid []
     (swap! counter dec)))
 
-(transact! [{:name "type" :type "type"}])
+(defn init []
+  (set! conn (d/create-conn {:tags {:db/valueType :db.type/ref
+                                   :db/cardinality :db.cardinality/many}}))
+  (reset! reports [])
+  (d/listen! conn :db-history #(swap! reports conj %))
+  (transact! [{:name "type" :type "type"}]))
 
+(init)
 
 (comment
  (transact! [{:db/id -1 :name "dude" :tags -2} {:db/id -2 :name "cool"}])

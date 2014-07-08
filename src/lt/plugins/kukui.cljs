@@ -417,6 +417,19 @@
                                                      (map #(hash-map :name % :type "type")))]
                         ))})
 
+
+(cmd/command {:command :kukui.sync-file-to-db
+              :desc "kukui: Syncs file to db"
+              :exec (fn []
+                      (let [ed (pool/last-active)
+                            lines (range (editor/first-line ed)
+                                         (inc (editor/last-line ed)))
+                            nodes (ed->nodes ed lines)
+                            file (util/current-file)]
+                        (def nodes nodes)
+                        (sync/sync nodes file)
+                        (sync/save-latest-edit nodes file)))})
+
 (comment
   (->> entity-records
        first

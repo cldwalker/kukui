@@ -1,12 +1,7 @@
 (ns lt.plugins.kukui.sync
   "Syncs a file to a db"
   (:require [lt.plugins.kukui.db :as db]
-            [lt.plugins.kukui.node :as node]
-            [lt.plugins.kukui.util :as util]
-            [lt.objs.editor :as editor]
-            [lt.objs.editor.pool :as pool]
-            [clojure.set :as cset]
-            [lt.objs.command :as cmd]))
+            [clojure.set :as cset]))
 
 (defn name-id-map []
   (into {} (db/q '[:find ?n ?e
@@ -137,22 +132,13 @@
   Used to determine what changed since last edit."
   (atom {}))
 
-(cmd/command {:command :kukui.sync-file-to-db
-              :desc "kukui: Syncs file to db"
-              :exec (fn []
-                      (let [ed (pool/last-active)
-                            lines (range (editor/first-line ed)
-                                         (inc (editor/last-line ed)))
-                            nodes (node/ed->nodes ed lines)
-                            file (util/current-file)]
-                        (def nodes nodes)
-                        (sync nodes file)
-                        (swap! last-edits update-in [file]
-                               #(concat (take-last 2 %)
-                                        (list nodes)))))})
-
+(defn save-latest-edit [nodes file]
+  (swap! last-edits update-in [file]
+         #(concat (take-last 2 %)
+                  (list nodes))))
 
 (comment
+  (reset! last-edits {})
   ;; diff
   (def current-edits (-> @last-edits vals first))
   (-> current-edits count)
