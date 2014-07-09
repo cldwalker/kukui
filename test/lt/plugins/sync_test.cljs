@@ -30,6 +30,14 @@
          (count (db/q '[:find ?e
                         :where [?e :text]])))))
 
+(deftest add-with-tag-from-other-node
+  (sync/sync [{:name "some?" :type "fn" :text "#name:some? #type:fn" :indent 0 :line 0}
+              {:text "such a great name #some? #type:td" :tags #{"some?"} :type "td" :indent 0 :line 1}] "/some/path")
+  (is (seq (db/q '[:find ?e
+                   :where
+                   [?e :tags ?tag]
+                   [?tag :name "some?"]])))
+
 (deftest delete-text-line
   (sync/sync [{:text "drink chocolate #type:td" :line 0 :indent 0 :type "td"}] "/some/path")
   (sync/sync [{:text "drink coffee #type:td" :line 1 :indent 0 :type "td"}] "/some/path")
@@ -52,6 +60,7 @@
   (reset-sync!)
 
   (sync/sync [{:text "whoop" :type "td"}] "/ok/path")
+  (db/entity 5)
   (db/qe '[:find ?e
            :where [?e]])
   (-> @sync/last-edits vals first)

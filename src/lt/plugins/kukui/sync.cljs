@@ -42,17 +42,17 @@
   [entities existing-tags new-tags tag-name]
   (or (get existing-tags tag-name)
       (get @new-tags tag-name)
-      (first (filter #(= (:name %) tag-name) entities))
+      (:db/id (first (filter #(= (:name %) tag-name) entities)))
       (let [id (db/tempid)]
         (swap! new-tags assoc tag-name id)
         id)))
 
 (defn expand-tags [entities]
   (let [new-tags (atom {})
+        entities (map #(assoc % :db/id (db/tempid)) entities)
         tag-id (partial ->tag-id entities (name-id-map) new-tags)
         entities-with-tags (doall
                             (->> entities
-                                 (map #(assoc % :db/id (db/tempid)))
                                  (mapcat (fn [ent]
                                            (into [(dissoc ent :tags)]
                                                  (map #(hash-map :db/id (:db/id ent) :tags (tag-id %))
@@ -148,9 +148,10 @@
 (comment
   ;; diff
   (def current-edits (-> @last-edits vals first))
-  (-> current-edits count)
+  (def nodes (-> current-edits first))
+  (map :tags nodes)
+  (map :tags (expand-tags nodes))
   (def nd (apply node-diff (take-last 2 current-edits)))
-  (->> nd :deleted )
   (sync nodes "/Users/me/docs/notes/comp/clojure.otl")
   (def tx (db/transact! [{:type "lang" :name "ruby"} {:text "woah" :tags 5}]))
 
@@ -160,11 +161,33 @@
                    :where
                    [?e :type ?type]]))
 
-  ;; counts by tag - FIX
-  (db/q '[:find ?tag (count ?e)
-          :where
-          [?e :tags ?t]
-          [?t :name ?tag]])
+  ;; counts by tag
+  (sort-by (comp - second)
+           (db/q '[:find ?tag (count ?e)
+                   :where
+                   [?e :tags ?t]
+                   [?t :name ?tag]]))
+
+  ;; counts by tag broken down by type
+  (->> (db/q '[:find ?tag ?type (count ?e)
+               :where
+               [?e :tags ?t]
+               [?e :type ?type]
+               [?t :name ?tag]])
+       (group-by first)
+       vals
+       (mapcat identity)
+       (reduce
+        #(assoc-in %1 (butlast %2) (last %2))
+        {}))
+
+  ;; counts by tag and for tagged type
+  (sort-by (comp - #(nth % 2))
+           (db/q '[:find ?tag ?type (count ?e)
+                   :where
+                   [?e :tags ?t]
+                   [?e :type ?type]
+                   [?t :name ?tag]]))
 
   ;; find-tagged
   (db/qe '[:find ?e
