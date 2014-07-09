@@ -1,12 +1,16 @@
 (ns lt.plugins.kukui.sync-test
-  (:require-macros [cemerick.cljs.test :refer [is deftest testing]])
+  (:require-macros [cemerick.cljs.test :refer [is deftest testing use-fixtures]])
   (:require [lt.plugins.kukui.sync :as sync]
             [lt.plugins.kukui.db :as db]
             [cemerick.cljs.test :as t]))
 
-(deftest add-on-first-edit
+(defn reset-sync! []
   (db/init)
-  (reset! sync/last-edits {})
+  (reset! sync/last-edits {}))
+
+(use-fixtures :each reset-sync!)
+
+(deftest add-on-first-edit
   (let [new-node {:text "drink coffee #type:td" :line 0 :indent 0 :type "td"}
         tx-data (sync/sync [new-node] "/some/path")
         eid (get-in tx-data [:db-after :max-eid])]
@@ -15,8 +19,6 @@
 
 
 (deftest add-on-second-edit
-  (db/init)
-  (reset! sync/last-edits {})
   (let [nodes [{:text "drink chocolate #type:td" :line 0 :indent 0 :type "td"}]]
     (sync/sync nodes "/some/path")
     (sync/sync (conj nodes {:text "drink coffee #type:td" :line 1 :indent 0 :type "td"}) "/some/path"))
@@ -25,8 +27,6 @@
                         :where [?e :text]])))))
 
 (deftest delete-text-line
-  (db/init)
-  (reset! sync/last-edits {})
   (sync/sync [{:text "drink chocolate #type:td" :line 0 :indent 0 :type "td"}] "/some/path")
   (sync/sync [{:text "drink coffee #type:td" :line 1 :indent 0 :type "td"}] "/some/path")
   (is (= '(1)
@@ -34,8 +34,6 @@
                   :where [?e :line ?line]]))))
 
 (deftest update-line
-  (db/init)
-  (reset! sync/last-edits {})
   (let [node {:text "drink coffee #type:td" :line 0 :indent 0 :type "td"}
         updated-nodes [{:text "drink chocolate #type:td" :line 0 :indent 0 :type "td"}
                        (assoc node :line 1)]]
