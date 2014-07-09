@@ -4,9 +4,8 @@
             [clojure.set :as cset]))
 
 (defn name-id-map []
-  (into {} (remove (comp nil? first)
-                   (db/q '[:find ?n ?e
-                           :where [?e :name ?n]]))))
+  (into {} (db/q '[:find ?n ?e
+                   :where [?e :name ?n]])))
 
 (defn must-have-unique-name [entities]
   (let [existing-tags (name-id-map)
@@ -45,7 +44,7 @@
       (get @new-tags tag-name)
       (first (filter #(= (:name %) tag-name) entities))
       (let [id (db/tempid)]
-        (swap! new-tags assoc % id)
+        (swap! new-tags assoc tag-name id)
         id)))
 
 (defn expand-tags [entities]

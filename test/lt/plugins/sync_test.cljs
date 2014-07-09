@@ -11,11 +11,15 @@
 (use-fixtures :each reset-sync!)
 
 (deftest add-on-first-edit
-  (let [new-node {:text "drink coffee #type:td" :line 0 :indent 0 :type "td"}
-        tx-data (sync/sync [new-node] "/some/path")
-        eid (get-in tx-data [:db-after :max-eid])]
-    (is (= (assoc new-node :db/id eid)
-           (db/entity eid)))))
+  (let [new-node {:text "drink coffee #type:td #food" :line 0 :indent 0 :type "td" :tags #{"food"}}]
+    (sync/sync [new-node] "/some/path")
+    (is (seq (db/q '[:find ?e
+                     :in $ ?text
+                     :where
+                     [?e :text ?text]
+                     [?e :tags ?tag]
+                     [?tag :name "food"]]
+                   (:text new-node))))))
 
 
 (deftest add-on-second-edit
@@ -45,7 +49,12 @@
                                    :where [?e :text]]))))))
 
 (comment
+  (reset-sync!)
+
+  (sync/sync [{:text "whoop" :type "td"}] "/ok/path")
+  (db/qe '[:find ?e
+           :where [?e]])
   (-> @sync/last-edits vals first)
   (reset! sync/last-edits {})
-  (map :tx-data @db/reports)
+  (-> @db/reports last :tx-data (filter))
   (:max-eid (:db-after (last @db/reports))))

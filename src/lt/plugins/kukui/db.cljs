@@ -22,6 +22,12 @@
   (map #(entity (first %))
        (apply q query args)))
 
+(defn find-first [attr value]
+  (first (qe '[:find ?e
+               :in $ ?attr ?type
+               :where [?e ?attr ?type]]
+             attr value)))
+
 (let [counter (atom 0)]
   (defn tempid []
     (swap! counter dec)))
