@@ -432,8 +432,7 @@
                           (sync/sync nodes file)
                           (catch :default e
                             (notifos/set-msg! (str "Failed to sync:" e) {:class "error"})
-                            (prn e (ex-data e))))
-                        (sync/save-latest-edit nodes file)))})
+                            (prn e (ex-data e))))))})
 
 (comment
   (->> entity-records

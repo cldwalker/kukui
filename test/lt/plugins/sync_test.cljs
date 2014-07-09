@@ -4,22 +4,50 @@
             [lt.plugins.kukui.db :as db]
             [cemerick.cljs.test :as t]))
 
-(deftest first-add
+(deftest add-on-first-edit
   (db/init)
+  (reset! sync/last-edits {})
   (let [new-node {:text "drink coffee #type:td" :line 0 :indent 0 :type "td"}
         tx-data (sync/sync [new-node] "/some/path")
         eid (get-in tx-data [:db-after :max-eid])]
     (is (= (assoc new-node :db/id eid)
            (db/entity eid)))))
 
-(deftest second-add
+
+(deftest add-on-second-edit
   (db/init)
+  (reset! sync/last-edits {})
+  (let [nodes [{:text "drink chocolate #type:td" :line 0 :indent 0 :type "td"}]]
+    (sync/sync nodes "/some/path")
+    (sync/sync (conj nodes {:text "drink coffee #type:td" :line 1 :indent 0 :type "td"}) "/some/path"))
+  (is (= 2
+         (count (db/q '[:find ?e
+                        :where [?e :text]])))))
+
+(deftest delete-text-line
+  (db/init)
+  (reset! sync/last-edits {})
   (sync/sync [{:text "drink chocolate #type:td" :line 0 :indent 0 :type "td"}] "/some/path")
   (sync/sync [{:text "drink coffee #type:td" :line 1 :indent 0 :type "td"}] "/some/path")
-  (assert (= 2
-             (count (db/q '[:find ?e
-                            :where [?e :text]])))))
+  (is (= '(1)
+         (db/qf '[:find ?line
+                  :where [?e :line ?line]]))))
+
+(deftest update-line
+  (db/init)
+  (reset! sync/last-edits {})
+  (let [node {:text "drink coffee #type:td" :line 0 :indent 0 :type "td"}
+        updated-nodes [{:text "drink chocolate #type:td" :line 0 :indent 0 :type "td"}
+                       (assoc node :line 1)]]
+    (sync/sync [node]  "/some/path")
+    (sync/sync updated-nodes "/some/path")
+    (is (= updated-nodes (map
+                          #(dissoc % :db/id)
+                          (db/qe '[:find ?e
+                                   :where [?e :text]]))))))
 
 (comment
+  (-> @sync/last-edits vals first)
   (reset! sync/last-edits {})
+  (map :tx-data @db/reports)
   (:max-eid (:db-after (last @db/reports))))

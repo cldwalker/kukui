@@ -112,24 +112,17 @@
                       {:lines invalid-lines})))
     ents))
 
-(defn sync [nodes file]
+(defn sync-entities [nodes file]
   (let [{:keys [added deleted updated]} (node-diff (-> @last-edits (get file) last)
-                                                   nodes)
-        new-entities (->new-entities added)
-        updated-entities (->> updated
-                              add-ids-by-line
-                              (mapv #(hash-map :db/id (:db/id %)
-                                               :line (:new-line %))))
-        deleted-entities (->> deleted
-                              add-ids-by-line
-                              (mapv #(vector :db.fn/retractEntity (:db/id %))))]
-    (println "Added/deleted/updated: "
-             (count new-entities) "/"
-             (count deleted-entities) "/"
-             (count updated-entities))
-    ;; Must be separate since there may be overlap
-    (db/transact! deleted-entities)
-    (db/transact! (into updated-entities new-entities))))
+                                                   nodes)]
+    {:added (->new-entities added)
+     :updated (->> updated
+                   add-ids-by-line
+                   (mapv #(hash-map :db/id (:db/id %)
+                                    :line (:new-line %))))
+     :deleted (->> deleted
+                   add-ids-by-line
+                   (mapv #(vector :db.fn/retractEntity (:db/id %))))}))
 
 (def last-edits
   "Maps files to their last few node snapshots.
@@ -140,6 +133,18 @@
   (swap! last-edits update-in [file]
          #(concat (take-last 2 %)
                   (list nodes))))
+
+(defn sync [nodes file]
+  (let [{:keys [added deleted updated]} (sync-entities nodes file)]
+    (println "Added/deleted/updated: "
+             (count added) "/"
+             (count deleted) "/"
+             (count updated-entities))
+    ;; Must be separate since there may be overlap
+    (db/transact! deleted)
+    (let [tx-report (db/transact! (into updated added))]
+      (save-latest-edit nodes file)
+      tx-report)))
 
 (comment
   ;; diff
