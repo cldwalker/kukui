@@ -39,7 +39,7 @@
                             line (.-line (editor/cursor ed))
                             lines (range line (c/safe-next-non-child-line ed line))]
                         (prn (->> lines
-                                  sync/->nodes
+                                  db/->nodes
                                   (mapcat :tags)
                                   frequencies))))})
 

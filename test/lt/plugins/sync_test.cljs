@@ -2,6 +2,7 @@
   (:require-macros [cemerick.cljs.test :refer [is deftest testing use-fixtures]])
   (:require [lt.plugins.kukui.sync :as sync]
             [lt.plugins.kukui.db :as db]
+            [lt.plugins.kukui.datascript :as d]
             [lt.plugins.kukui.core :as kc]
             [cemerick.cljs.test :as t]))
 
@@ -23,7 +24,7 @@
 (deftest add-on-first-edit
   (let [new-node {:text "drink coffee #type:td #food" :line 0}]
     (sync [new-node])
-    (is (seq (db/q '[:find ?e
+    (is (seq (d/q '[:find ?e
                      :in $ ?text
                      :where
                      [?e :text ?text]
@@ -37,13 +38,13 @@
     (sync nodes)
     (sync (conj nodes {:text "drink coffee #type:td" :line 1})))
   (is (= 2
-         (count (db/q '[:find ?e
+         (count (d/q '[:find ?e
                         :where [?e :text]])))))
 
 (deftest add-with-tag-from-other-node
   (sync [{:text "#name:some? #type:fn" :line 0}
          {:text "such a great name #some? #type:td" :line 1}])
-  (is (seq (db/q '[:find ?e
+  (is (seq (d/q '[:find ?e
                    :where
                    [?e :tags ?tag]
                    [?tag :name "some?"]]))))
@@ -52,7 +53,7 @@
   (sync [{:text "drink chocolate #type:td" :line 0}])
   (sync [{:text "drink coffee #type:td" :line 1}])
   (is (= '(1)
-         (db/qf '[:find ?line
+         (d/qf '[:find ?line
                   :where [?e :line ?line]]))))
 
 (deftest update-line
@@ -63,17 +64,17 @@
     (sync updated-nodes)
     (is (= updated-nodes (map
                           #(select-keys % [:text :line])
-                          (db/qe '[:find ?e
+                          (d/qe '[:find ?e
                                    :where [?e :text]]))))))
 
 (comment
   (reset-sync!)
 
   (sync/sync [{:text "whoop" :type "td"}] "/ok/path")
-  (db/entity 5)
-  (db/qe '[:find ?e
+  (d/entity 5)
+  (d/qe '[:find ?e
            :where [?e]])
   (-> @sync/last-edits vals first)
   (reset! sync/last-edits {})
-  (-> @db/reports last :tx-data (filter))
-  (:max-eid (:db-after (last @db/reports))))
+  (-> @d/reports last :tx-data (filter))
+  (:max-eid (:db-after (last @d/reports))))

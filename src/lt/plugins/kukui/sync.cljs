@@ -1,58 +1,8 @@
 (ns lt.plugins.kukui.sync
   "Syncs a file to a db"
   (:require [lt.plugins.kukui.db :as db]
+            [lt.plugins.kukui.datascript :as d]
             [clojure.set :as cset]))
-
-(defn name-id-map []
-  (into {} (db/q '[:find ?n ?e
-                   :where [?e :name ?n]])))
-
-(defn ->nodes
-  "Returns nodes with :tags for given range of lines"
-  [lines]
-  (->>
-   (db/q '[:find ?e ?name
-           :in $ ?first ?last
-           :where
-           [?e :tags ?tag]
-           [?tag :name ?name]
-           [?e :line ?line]
-           [(<= ?first ?line ?last)]]
-         (first lines)
-         (last lines))
-   (group-by first)
-   (map (fn [[id tag-tuples]]
-          (assoc (db/entity id)
-            :tags (set (map second tag-tuples)))))))
-
-(defn must-have-unique-name [entities]
-  (let [existing-tags (name-id-map)
-        names (set (keys existing-tags))
-        invalid (filter #(and (:name %) (contains? names (:name %))) entities)
-        invalid (->> entities
-                     (filter :name)
-                     (group-by :name)
-                     vals
-                     (mapcat #(when (> (count %) 1) %))
-                     (into invalid))]
-    (when (seq invalid)
-      (prn "INVALID" invalid)
-      (throw (ex-info (str "Names must be unique: " (map :name invalid))
-                      {:names (map :name invalid)})))
-    entities))
-
-(defn must-require-type [entities]
-  (let [invalid (->> entities
-                     (remove #(or (integer? (:tags %))
-                                  (seq (:tags %))))
-                     (remove :type))]
-    (when (seq invalid)
-      (prn "INVALID" invalid)
-      (throw (ex-info (str "Type must be present")
-                      {:invalid invalid})))
-    entities))
-
-(def unknown-type "unknown")
 
 (defn ->tag-id
   "Given a tag name and a number of data structures it could be in,
@@ -61,14 +11,14 @@
   (or (get existing-tags tag-name)
       (get @new-tags tag-name)
       (:db/id (first (filter #(= (:name %) tag-name) entities)))
-      (let [id (db/tempid)]
+      (let [id (d/tempid)]
         (swap! new-tags assoc tag-name id)
         id)))
 
 (defn expand-tags [entities]
   (let [new-tags (atom {})
-        entities (map #(assoc % :db/id (db/tempid)) entities)
-        tag-id (partial ->tag-id entities (name-id-map) new-tags)
+        entities (map #(assoc % :db/id (d/tempid)) entities)
+        tag-id (partial ->tag-id entities (db/name-id-map) new-tags)
         entities-with-tags (doall
                             (->> entities
                                  (mapcat (fn [ent]
@@ -76,18 +26,18 @@
                                                  (map #(hash-map :db/id (:db/id ent) :tags (tag-id %))
                                                       (:tags ent)))))))]
     (into (map (fn [[tag id]]
-                 {:db/id id :name tag :type unknown-type})
+                 {:db/id id :name tag :type db/unknown-type})
                @new-tags)
           entities-with-tags)))
 
 (defn add-types [entities]
-  (let [existing-types (set (db/qf '[:find ?type
+  (let [existing-types (set (d/qf '[:find ?type
                                      :where [?e :type ?type]]))]
     (->> entities
          (keep :type)
          set
          (remove #(contains? existing-types %))
-         (map #(hash-map :name % :type "type"))
+         (map #(hash-map :name % :type db/root-type))
          (into entities))))
 
 (defn node-diff [nodes1 nodes2]
@@ -113,11 +63,11 @@
   (->> nodes
        add-types
        expand-tags
-       must-have-unique-name
-       must-require-type))
+       db/must-have-unique-name
+       db/must-require-type))
 
 (defn add-ids-by-line [nodes]
-  (let [line-entities (into {} (db/q '[:find ?l ?e
+  (let [line-entities (into {} (d/q '[:find ?l ?e
                                        :where [?e :line ?l]]))
 
         ents (map #(assoc % :db/id (get line-entities (:line %)))
@@ -158,8 +108,8 @@
              (count deleted) "/"
              (count updated-entities))
     ;; Must be separate since there may be overlap
-    (db/transact! deleted)
-    (let [tx-report (db/transact! (into updated added))]
+    (d/transact! deleted)
+    (let [tx-report (d/transact! (into updated added))]
       (save-latest-edit nodes file)
       tx-report)))
 
@@ -171,66 +121,5 @@
   (map :tags (expand-tags nodes))
   (def nd (apply node-diff (take-last 2 current-edits)))
   (sync nodes "/Users/me/docs/notes/comp/clojure.otl")
-  (def tx (db/transact! [{:type "lang" :name "ruby"} {:text "woah" :tags 5}]))
-
-  ;; counts by type
-  (sort-by (comp - second)
-           (db/q '[:find ?type (count ?e)
-                   :where
-                   [?e :type ?type]]))
-
-  ;; counts by tag
-  (sort-by (comp - second)
-           (db/q '[:find ?tag (count ?e)
-                   :where
-                   [?e :tags ?t]
-                   [?t :name ?tag]]))
-
-
-  ;; counts by tag broken down by type
-  (->> (db/q '[:find ?tag ?type (count ?e)
-               :where
-               [?e :tags ?t]
-               [?e :type ?type]
-               [?t :name ?tag]])
-       (group-by first)
-       vals
-       (mapcat identity)
-       (reduce
-        #(assoc-in %1 (butlast %2) (last %2))
-        {}))
-
-  ;; counts by tag and for tagged type
-  (sort-by (comp - #(nth % 2))
-           (db/q '[:find ?tag ?type (count ?e)
-                   :where
-                   [?e :tags ?t]
-                   [?e :type ?type]
-                   [?t :name ?tag]]))
-
-  ;; find-tagged
-  (db/qe '[:find ?e
-        :in $ ?tag
-        :where
-        [?e :tags ?t]
-        [?t :name ?tag]]
-      "cljs")
-
-  ;; total count
-  (db/q '[:find (count ?e)
-          :where [?e]])
-
-  ;; find all
-  (db/qe '[:find ?e
-           :where [?e]])
-
-  ;; last-tx
-  (:tx-data (last @reports))
-  ;; delete attr
-  (db/transact! [:db/retract 2 :tags 4])
-  ;; update
-  (db/transact! [{:db/id 128 :type "plang"}])
-  ;; delete
-  (db/transact! [[:db.fn/retractEntity 2]])
-
+  (def tx (d/transact! [{:type "lang" :name "ruby"} {:text "woah" :tags 5}]))
   )

@@ -1,46 +1,130 @@
 (ns lt.plugins.kukui.db
-  "In-memory DB for nodes, types, things"
-  (:require [datascript :as d]))
+  "In-memory DB for nodes, types and things"
+  (:require [lt.plugins.kukui.datascript :as d]))
 
-(def conn "A datascript connection" nil)
-(def reports "Holds a history of all entities through their TxReports" (atom []))
+(def unknown-type "unknown")
+(def root-type "type")
 
-(defn transact! [records]
-  (d/transact! conn records))
+;; Validations
+(defn must-have-unique-name [entities]
+  (let [existing-tags (name-id-map)
+        names (set (keys existing-tags))
+        invalid (filter #(and (:name %) (contains? names (:name %))) entities)
+        invalid (->> entities
+                     (filter :name)
+                     (group-by :name)
+                     vals
+                     (mapcat #(when (> (count %) 1) %))
+                     (into invalid))]
+    (when (seq invalid)
+      (prn "INVALID" invalid)
+      (throw (ex-info (str "Names must be unique: " (map :name invalid))
+                      {:names (map :name invalid)})))
+    entities))
 
-(defn q [query & args]
-  (apply d/q query @conn args))
+(defn must-require-type [entities]
+  (let [invalid (->> entities
+                     (remove #(or (integer? (:tags %))
+                                  (seq (:tags %))))
+                     (remove :type))]
+    (when (seq invalid)
+      (prn "INVALID" invalid)
+      (throw (ex-info (str "Type must be present")
+                      {:invalid invalid})))
+    entities))
 
-(defn qf [query & args]
-  (map first
-       (apply q query args)))
 
-(defn entity [id]
-  (d/entity @conn id))
+;; Queries
+;; =======
+(defn name-id-map []
+  (into {} (d/q '[:find ?n ?e
+                   :where [?e :name ?n]])))
 
-(defn qe [query & args]
-  (map #(entity (first %))
-       (apply q query args)))
-
-(defn find-first [attr value]
-  (first (qe '[:find ?e
-               :in $ ?attr ?type
-               :where [?e ?attr ?type]]
-             attr value)))
-
-(let [counter (atom 0)]
-  (defn tempid []
-    (swap! counter dec)))
+(defn ->nodes
+  "Returns nodes with :tags for given range of lines"
+  [lines]
+  (->>
+   (d/q '[:find ?e ?name
+           :in $ ?first ?last
+           :where
+           [?e :tags ?tag]
+           [?tag :name ?name]
+           [?e :line ?line]
+           [(<= ?first ?line ?last)]]
+         (first lines)
+         (last lines))
+   (group-by first)
+   (map (fn [[id tag-tuples]]
+          (assoc (d/entity id)
+            :tags (set (map second tag-tuples)))))))
 
 (defn init []
-  (set! conn (d/create-conn {:tags {:db/valueType :db.type/ref
-                                   :db/cardinality :db.cardinality/many}}))
-  (reset! reports [])
-  (d/listen! conn :db-history #(swap! reports conj %))
-  (transact! [{:name "type" :type "type"}]))
+  (d/reset-connection! {:tags {:db/valueType :db.type/ref
+                           :db/cardinality :db.cardinality/many}})
+  (d/transact! [{:name root-type :type root-type}]))
 
 (init)
 
 (comment
- (transact! [{:db/id -1 :name "dude" :tags -2} {:db/id -2 :name "cool"}])
+
+  ;; counts by type
+  (sort-by (comp - second)
+           (d/q '[:find ?type (count ?e)
+                   :where
+                   [?e :type ?type]]))
+
+  ;; counts by tag
+  (sort-by (comp - second)
+           (d/q '[:find ?tag (count ?e)
+                   :where
+                   [?e :tags ?t]
+                   [?t :name ?tag]]))
+
+
+  ;; counts by tag broken down by type
+  (->> (d/q '[:find ?tag ?type (count ?e)
+               :where
+               [?e :tags ?t]
+               [?e :type ?type]
+               [?t :name ?tag]])
+       (group-by first)
+       vals
+       (mapcat identity)
+       (reduce
+        #(assoc-in %1 (butlast %2) (last %2))
+        {}))
+
+  ;; counts by tag and for tagged type
+  (sort-by (comp - #(nth % 2))
+           (d/q '[:find ?tag ?type (count ?e)
+                   :where
+                   [?e :tags ?t]
+                   [?e :type ?type]
+                   [?t :name ?tag]]))
+
+  ;; find-tagged
+  (d/qe '[:find ?e
+        :in $ ?tag
+        :where
+        [?e :tags ?t]
+        [?t :name ?tag]]
+      "cljs")
+
+  ;; total count
+  (d/q '[:find (count ?e)
+          :where [?e]])
+
+  ;; find all
+  (d/qe '[:find ?e
+           :where [?e]])
+
+  ;; last-tx
+  (:tx-data (last @reports))
+  ;; delete attr
+  (d/transact! [:db/retract 2 :tags 4])
+  ;; update
+  (d/transact! [{:db/id 128 :type "plang"}])
+  ;; delete
+  (d/transact! [[:db.fn/retractEntity 2]])
+
   )
