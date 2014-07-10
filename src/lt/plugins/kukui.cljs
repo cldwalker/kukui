@@ -27,8 +27,21 @@
 (cmd/command {:command :kukui.tag-counts
               :desc "kukui: tag counts in current branch's nodes"
               :exec (fn []
-                      (let [ed (pool/last-active)]
+                      (let [ed (pool/last-active)
+                            line (.-line (editor/cursor ed))
+                            lines (range line (c/safe-next-non-child-line ed line))]
                         (prn (->tagged-counts ed nil))))})
+
+(cmd/command {:command :kukui.db-tag-counts
+              :desc "kukui: db tag counts in current branch's nodes"
+              :exec (fn []
+                      (let [ed (pool/last-active)
+                            line (.-line (editor/cursor ed))
+                            lines (range line (c/safe-next-non-child-line ed line))]
+                        (prn (->> lines
+                                  sync/->nodes
+                                  (mapcat :tags)
+                                  frequencies))))})
 
 
 (defn type-nodes->tag-map

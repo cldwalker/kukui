@@ -7,6 +7,24 @@
   (into {} (db/q '[:find ?n ?e
                    :where [?e :name ?n]])))
 
+(defn ->nodes
+  "Returns nodes with :tags for given range of lines"
+  [lines]
+  (->>
+   (db/q '[:find ?e ?name
+           :in $ ?first ?last
+           :where
+           [?e :tags ?tag]
+           [?tag :name ?name]
+           [?e :line ?line]
+           [(<= ?first ?line ?last)]]
+         (first lines)
+         (last lines))
+   (group-by first)
+   (map (fn [[id tag-tuples]]
+          (assoc (db/entity id)
+            :tags (set (map second tag-tuples)))))))
+
 (defn must-have-unique-name [entities]
   (let [existing-tags (name-id-map)
         names (set (keys existing-tags))
@@ -167,6 +185,7 @@
                    :where
                    [?e :tags ?t]
                    [?t :name ?tag]]))
+
 
   ;; counts by tag broken down by type
   (->> (db/q '[:find ?tag ?type (count ?e)
