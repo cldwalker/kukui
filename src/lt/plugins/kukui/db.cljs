@@ -6,6 +6,7 @@
 (def root-type "type")
 
 ;; Validations
+;; ===========
 (defn must-have-unique-name [entities]
   (let [existing-tags (name-id-map)
         names (set (keys existing-tags))
@@ -58,6 +59,8 @@
           (assoc (d/entity id)
             :tags (set (map second tag-tuples)))))))
 
+;; Misc
+;; ====
 (defn init []
   (d/reset-connection! {:tags {:db/valueType :db.type/ref
                            :db/cardinality :db.cardinality/many}})
@@ -110,16 +113,6 @@
         [?t :name ?tag]]
       "cljs")
 
-  ;; total count
-  (d/q '[:find (count ?e)
-          :where [?e]])
-
-  ;; find all
-  (d/qe '[:find ?e
-           :where [?e]])
-
-  ;; last-tx
-  (:tx-data (last @reports))
   ;; delete attr
   (d/transact! [:db/retract 2 :tags 4])
   ;; update
