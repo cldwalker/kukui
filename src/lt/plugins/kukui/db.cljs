@@ -34,6 +34,14 @@
                       {:invalid invalid})))
     entities))
 
+;; Rules
+;; =====
+
+(def lines-rule '[[(lines ?e ?first-line ?last-line)
+                   [?e :line ?line]
+                   [(<= ?first-line ?line ?last-line)]]])
+(def rules
+  (concat lines-rule))
 
 ;; Queries
 ;; =======
@@ -41,29 +49,58 @@
   (into {} (d/q '[:find ?n ?e
                    :where [?e :name ?n]])))
 
+(def lines (range 17 131))
 (defn ->nodes
   "Returns nodes with :tags for given range of lines"
   [lines]
   (->>
    (d/q '[:find ?e ?name
-           :in $ ?first ?last
-           :where
-           [?e :tags ?tag]
-           [?tag :name ?name]
-           [?e :line ?line]
-           [(<= ?first ?line ?last)]]
-         (first lines)
-         (last lines))
+          :in $ % ?first ?last
+          :where
+          [?e :tags ?tag]
+          [?tag :name ?name]
+          (lines ?e ?first ?last)]
+        rules (first lines) (last lines))
    (group-by first)
    (map (fn [[id tag-tuples]]
           (assoc (d/entity id)
             :tags (set (map second tag-tuples)))))))
 
+(defn type-counts
+  [lines]
+  (sort-by (comp - second)
+           (d/q '[:find ?type (count ?e)
+                  :in $ % ?first ?last
+                  :where
+                  [?e :type ?type]
+                  (lines ?e ?first ?last)]
+                rules (first lines) (last lines))))
+
+(defn tag-counts
+  [lines]
+  (->>
+   (d/q '[:find ?type ?tag (count ?e)
+          :in $ % ?first ?last
+          :where
+          [?e :tags ?t]
+          [?t :type ?type]
+          [?t :name ?tag]
+          (lines ?e ?first ?last)]
+        rules
+        (first lines)
+        (last lines))
+   (group-by first)
+   vals
+   (mapcat identity)
+   (reduce
+    #(assoc-in %1 (butlast %2) (last %2))
+    {})))
+
 ;; Misc
 ;; ====
 (defn init []
   (d/reset-connection! {:tags {:db/valueType :db.type/ref
-                           :db/cardinality :db.cardinality/many}})
+                               :db/cardinality :db.cardinality/many}})
   (d/transact! [{:name root-type :type root-type}]))
 
 (init)
