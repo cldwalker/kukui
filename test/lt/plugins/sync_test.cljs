@@ -2,6 +2,7 @@
   (:require-macros [cemerick.cljs.test :refer [is deftest testing use-fixtures]])
   (:require [lt.plugins.kukui.sync :as sync]
             [lt.plugins.kukui.db :as db]
+            [lt.plugins.kukui.core :as kc]
             [cemerick.cljs.test :as t]))
 
 (defn reset-sync! []
@@ -10,9 +11,18 @@
 
 (use-fixtures :each reset-sync!)
 
+(defn ->nodes [nodes]
+  (->> nodes
+       kc/add-attributes-to-nodes
+       (mapv
+        #(assoc % :indent (count (re-find #"^\s*" (:text %)))))))
+
+(defn sync [nodes]
+  (sync/sync (->nodes nodes) "/some/path"))
+
 (deftest add-on-first-edit
-  (let [new-node {:text "drink coffee #type:td #food" :line 0 :indent 0 :type "td" :tags #{"food"}}]
-    (sync/sync [new-node] "/some/path")
+  (let [new-node {:text "drink coffee #type:td #food" :line 0}]
+    (sync [new-node])
     (is (seq (db/q '[:find ?e
                      :in $ ?text
                      :where
@@ -23,36 +33,36 @@
 
 
 (deftest add-on-second-edit
-  (let [nodes [{:text "drink chocolate #type:td" :line 0 :indent 0 :type "td"}]]
-    (sync/sync nodes "/some/path")
-    (sync/sync (conj nodes {:text "drink coffee #type:td" :line 1 :indent 0 :type "td"}) "/some/path"))
+  (let [nodes [{:text "drink chocolate #type:td" :line 0}]]
+    (sync nodes)
+    (sync (conj nodes {:text "drink coffee #type:td" :line 1})))
   (is (= 2
          (count (db/q '[:find ?e
                         :where [?e :text]])))))
 
 (deftest add-with-tag-from-other-node
-  (sync/sync [{:name "some?" :type "fn" :text "#name:some? #type:fn" :indent 0 :line 0}
-              {:text "such a great name #some? #type:td" :tags #{"some?"} :type "td" :indent 0 :line 1}] "/some/path")
+  (sync [{:text "#name:some? #type:fn" :line 0}
+         {:text "such a great name #some? #type:td" :line 1}])
   (is (seq (db/q '[:find ?e
                    :where
                    [?e :tags ?tag]
-                   [?tag :name "some?"]])))
+                   [?tag :name "some?"]]))))
 
 (deftest delete-text-line
-  (sync/sync [{:text "drink chocolate #type:td" :line 0 :indent 0 :type "td"}] "/some/path")
-  (sync/sync [{:text "drink coffee #type:td" :line 1 :indent 0 :type "td"}] "/some/path")
+  (sync [{:text "drink chocolate #type:td" :line 0}])
+  (sync [{:text "drink coffee #type:td" :line 1}])
   (is (= '(1)
          (db/qf '[:find ?line
                   :where [?e :line ?line]]))))
 
 (deftest update-line
-  (let [node {:text "drink coffee #type:td" :line 0 :indent 0 :type "td"}
-        updated-nodes [{:text "drink chocolate #type:td" :line 0 :indent 0 :type "td"}
+  (let [node {:text "drink coffee #type:td" :line 0}
+        updated-nodes [{:text "drink chocolate #type:td" :line 0}
                        (assoc node :line 1)]]
-    (sync/sync [node]  "/some/path")
-    (sync/sync updated-nodes "/some/path")
+    (sync [node])
+    (sync updated-nodes)
     (is (= updated-nodes (map
-                          #(dissoc % :db/id)
+                          #(select-keys % [:text :line])
                           (db/qe '[:find ?e
                                    :where [?e :text]]))))))
 
