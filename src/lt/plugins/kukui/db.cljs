@@ -49,7 +49,6 @@
   (into {} (d/q '[:find ?n ?e
                    :where [?e :name ?n]])))
 
-(def lines (range 17 131))
 (defn ->nodes
   "Returns nodes with :tags for given range of lines"
   [lines]
@@ -66,15 +65,15 @@
           (assoc (d/entity id)
             :tags (set (map second tag-tuples)))))))
 
-(defn type-counts
-  [lines]
+(defn attr-counts
+  [lines attr]
   (sort-by (comp - second)
            (d/q '[:find ?type (count ?e)
-                  :in $ % ?first ?last
+                  :in $ % ?first ?last ?attr
                   :where
-                  [?e :type ?type]
+                  [?e ?attr ?type]
                   (lines ?e ?first ?last)]
-                rules (first lines) (last lines))))
+                rules (first lines) (last lines) attr)))
 
 (defn tag-counts
   [lines]

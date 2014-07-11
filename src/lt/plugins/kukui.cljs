@@ -13,6 +13,7 @@
                                            desc-node? type-delimiter]]
             [lt.plugins.kukui.node :refer [ed->nodes line->node]]
             [lt.plugins.kukui.sync :as sync]
+            [lt.plugins.kukui.db :as db]
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 
@@ -127,6 +128,35 @@
                                "untagged" (count (filter (comp empty? :tags) nodes))
                                "nodes" (count nodes)))
                         (attribute-counts nodes)))})
+
+(defn db-types-counts [lines]
+  (let [nodes (db/->nodes lines)]
+    (println "Tag counts")
+    (prn (db/tag-counts lines))
+    (println "Tag counts by type")
+    (prn (map (fn [[type tag-map]]
+                [type (apply + (vals tag-map))])
+              (db/tag-counts lines)))
+    (prn "Misc counts" {:untagged (count (filter (comp empty? :tags) nodes))
+                        :nodes (count nodes)})
+    (println "Type counts")
+    (pprint (db/attr-counts lines :type))))
+
+(cmd/command {:command :kukui.db-types-counts
+              :desc "kukui: db tag counts of each type for current branch or selection"
+              :exec (fn []
+                      (let [ed (pool/last-active)
+                            line (.-line (editor/cursor ed))
+                            lines (range line (c/safe-next-non-child-line ed line))]
+                        (db-types-counts lines)))})
+
+(cmd/command {:command :kukui.db-all-types-counts
+              :desc "kukui: Same as types-counts but for whole file"
+              :exec (fn []
+                      (let [ed (pool/last-active)
+                            lines (range (editor/first-line ed)
+                                         (inc (editor/last-line ed)))]
+                        (db-types-counts lines)))})
 
 (cmd/command {:command :kukui.debug-nodes
               :desc "kukui: prints nodes for current branch or selection"
