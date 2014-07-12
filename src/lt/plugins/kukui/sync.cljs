@@ -106,6 +106,11 @@
                       {:invalid invalid-entities})))
   entities)
 
+(def last-edits
+  "Maps files to their last few node snapshots.
+  Used to determine what changed since last edit."
+  (atom {}))
+
 (defn sync-entities [nodes file]
   (let [{:keys [added deleted updated]} (node-diff (-> @last-edits (get file) last)
                                                    nodes)]
@@ -114,11 +119,6 @@
      :deleted (->> deleted
                    must-have-ids
                    (mapv #(vector :db.fn/retractEntity (:db/id %))))}))
-
-(def last-edits
-  "Maps files to their last few node snapshots.
-  Used to determine what changed since last edit."
-  (atom {}))
 
 (defn save-latest-edit [nodes file]
   (swap! last-edits update-in [file]
@@ -130,7 +130,7 @@
     (println "Added/deleted/updated: "
              (count added) "/"
              (count deleted) "/"
-             (count updated-entities))
+             (count updated))
     ;; Must be separate since there may be overlap
     (d/transact! deleted)
     (let [tx-report (d/transact! (into updated added))]

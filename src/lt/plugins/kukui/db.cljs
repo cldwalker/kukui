@@ -5,44 +5,6 @@
 (def unknown-type "unknown")
 (def root-type "type")
 
-;; Validations
-;; ===========
-(defn must-have-unique-name [entities]
-  (let [existing-tags (name-id-map)
-        names (set (keys existing-tags))
-        invalid (filter #(and (:name %) (contains? names (:name %))) entities)
-        invalid (->> entities
-                     (filter :name)
-                     (group-by :name)
-                     vals
-                     (mapcat #(when (> (count %) 1) %))
-                     (into invalid))]
-    (when (seq invalid)
-      (prn "INVALID" invalid)
-      (throw (ex-info (str "Names must be unique: " (map :name invalid))
-                      {:names (map :name invalid)})))
-    entities))
-
-(defn must-require-type [entities]
-  (let [invalid (->> entities
-                     (remove #(or (integer? (:tags %))
-                                  (seq (:tags %))))
-                     (remove :type))]
-    (when (seq invalid)
-      (prn "INVALID" invalid)
-      (throw (ex-info (str "Type must be present")
-                      {:invalid invalid})))
-    entities))
-
-;; Rules
-;; =====
-
-(def lines-rule '[[(lines ?e ?first-line ?last-line)
-                   [?e :line ?line]
-                   [(<= ?first-line ?line ?last-line)]]])
-(def rules
-  (concat lines-rule))
-
 ;; Queries
 ;; =======
 (defn name-id-map []
@@ -94,6 +56,44 @@
    (reduce
     #(assoc-in %1 (butlast %2) (last %2))
     {})))
+
+;; Validations
+;; ===========
+(defn must-have-unique-name [entities]
+  (let [existing-tags (name-id-map)
+        names (set (keys existing-tags))
+        invalid (filter #(and (:name %) (contains? names (:name %))) entities)
+        invalid (->> entities
+                     (filter :name)
+                     (group-by :name)
+                     vals
+                     (mapcat #(when (> (count %) 1) %))
+                     (into invalid))]
+    (when (seq invalid)
+      (prn "INVALID" invalid)
+      (throw (ex-info (str "Names must be unique: " (map :name invalid))
+                      {:names (map :name invalid)})))
+    entities))
+
+(defn must-require-type [entities]
+  (let [invalid (->> entities
+                     (remove #(or (integer? (:tags %))
+                                  (seq (:tags %))))
+                     (remove :type))]
+    (when (seq invalid)
+      (prn "INVALID" invalid)
+      (throw (ex-info (str "Type must be present")
+                      {:invalid invalid})))
+    entities))
+
+;; Rules
+;; =====
+
+(def lines-rule '[[(lines ?e ?first-line ?last-line)
+                   [?e :line ?line]
+                   [(<= ?first-line ?line ?last-line)]]])
+(def rules
+  (concat lines-rule))
 
 ;; Misc
 ;; ====
