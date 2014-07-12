@@ -40,24 +40,57 @@
          (map #(hash-map :name % :type db/root-type))
          (into entities))))
 
-(defn node-diff [nodes1 nodes2]
+(defn add-ids-by-line [nodes]
+  (let [line-entities (into {} (d/q '[:find ?l ?e
+                                      :where [?e :line ?l]]))]
+    (map #(if (:db/id %) %
+            (assoc % :db/id (get line-entities (:line %))))
+         nodes)))
+
+(defn node-diff* [nodes1 nodes2]
   (let [old-nodes (into {} (map (juxt :text identity) nodes1))
+        ;; Pulling names from nodes1 has too many edge cases - just use existing
+        name-entities (->> (db/name-id-map)
+                           (map (fn [[name id]] [name (d/entity id)]))
+                           (into {} ))
         changes {:deleted (cset/difference (set nodes1) (set nodes2))}]
     (reduce
      (fn [accum node]
        (let [old-node (get old-nodes (:text node))]
-         (if (nil? old-node)
-           ;; could be updated text
-           (update-in accum [:added] (fnil conj []) node)
-           (if (not= (:line old-node) (:line node))
-             (-> accum
-                 (update-in [:updated] (fnil conj [])
-                            {:line (:line old-node)
-                             :new-line (:line node)})
-                 (update-in [:deleted] disj old-node))
-             accum))))
+         (cond
+
+          ;; update existing named thing
+          (when-let [existing-name (get name-entities (:name node))]
+               (not= (:type existing-name) (:type node)))
+          (update-in accum [:updated] (fnil conj [])
+                     {:db/id (:db/id (get name-entities (:name node)))
+                      :type (:type node)})
+
+          ;; could be updated text
+          (nil? old-node)
+          (update-in accum [:added] (fnil conj []) node)
+
+          (not= (:line old-node) (:line node))
+          (-> accum
+              (update-in [:updated] (fnil conj [])
+                         {:line (:line old-node)
+                          :new-line (:line node)})
+              (update-in [:deleted] disj old-node))
+
+
+          :else accum)))
      changes
      nodes2)))
+
+(defn node-diff [nodes1 nodes2]
+  (-> (node-diff* nodes1 nodes2)
+      (update-in [:updated] add-ids-by-line)
+      (update-in [:updated] (fn [nodes]
+                              (map #(if (:new-line %)
+                                      {:db/id (:db/id %) :line (:new-line %)}
+                                      %)
+                                   nodes)))
+      (update-in [:deleted] add-ids-by-line)))
 
 (defn ->new-entities [nodes]
   (->> nodes
@@ -66,29 +99,20 @@
        db/must-have-unique-name
        db/must-require-type))
 
-(defn add-ids-by-line [nodes]
-  (let [line-entities (into {} (d/q '[:find ?l ?e
-                                       :where [?e :line ?l]]))
-
-        ents (map #(assoc % :db/id (get line-entities (:line %)))
-                  nodes)
-        invalid-lines (map :line (filter #(nil? (:db/id %)) ents))]
-    (when (seq invalid-lines)
-      (prn "Invalid lines" invalid-lines)
-      (throw (ex-info (str "Cannot find entities with these lines: " (pr-str invalid-lines))
-                      {:lines invalid-lines})))
-    ents))
+(defn must-have-ids [entities]
+  (when-let [invalid-entities (seq (remove :db/id entities))]
+    (prn "Invalid entities" invalid-entities)
+    (throw (ex-info (str "Cannot update these entities without their ids: " (pr-str invalid-entities))
+                      {:invalid invalid-entities})))
+  entities)
 
 (defn sync-entities [nodes file]
   (let [{:keys [added deleted updated]} (node-diff (-> @last-edits (get file) last)
                                                    nodes)]
     {:added (->new-entities added)
-     :updated (->> updated
-                   add-ids-by-line
-                   (mapv #(hash-map :db/id (:db/id %)
-                                    :line (:new-line %))))
+     :updated (must-have-ids updated)
      :deleted (->> deleted
-                   add-ids-by-line
+                   must-have-ids
                    (mapv #(vector :db.fn/retractEntity (:db/id %))))}))
 
 (def last-edits

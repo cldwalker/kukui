@@ -65,7 +65,20 @@
     (is (= updated-nodes (map
                           #(select-keys % [:text :line])
                           (d/qe '[:find ?e
-                                   :where [?e :text]]))))))
+                                  :where [?e :text]]))))))
+
+(deftest named-entity-uses-last-node-for-type
+  (sync [{:text "rooting for #messi #type:note"}
+         {:text "#name:messi #type:person"}])
+  (is (= "person"
+         (:type (d/find-first :name "messi")))))
+
+(deftest named-entity-can-update-type
+  (sync [{:text "rooting for #messi #type:note"}])
+  (sync [{:text "rooting for #messi #type:note"}
+         {:text "#name:messi #type:person"}])
+  (is (= "person"
+         (:type (d/find-first :name "messi")))))
 
 (comment
   (reset-sync!)
@@ -73,7 +86,7 @@
   (sync/sync [{:text "whoop" :type "td"}] "/ok/path")
   (d/entity 5)
   (d/qe '[:find ?e
-           :where [?e]])
+          :where [?e]])
   (-> @sync/last-edits vals first)
   (reset! sync/last-edits {})
   (-> @d/reports last :tx-data (filter))
