@@ -67,16 +67,16 @@
                           (d/qe '[:find ?e
                                   :where [?e :text]]))))))
 
-(deftest named-entity-uses-last-node-for-type
-  (sync [{:text "rooting for #messi #type:note"}
-         {:text "#name:messi #type:person"}])
+(deftest tag-can-have-its-entity-updated-later
+  (sync [{:text "rooting for #messi #type:note" :line 0}
+         {:text "#name:messi #type:person" :line 1}])
   (is (= "person"
          (:type (d/find-first :name "messi")))))
 
 (deftest named-entity-can-update-type
-  (sync [{:text "rooting for #messi #type:note"}])
-  (sync [{:text "rooting for #messi #type:note"}
-         {:text "#name:messi #type:person"}])
+  (sync [{:text "rooting for #messi #type:note" :line 0}])
+  (sync [{:text "rooting for #messi #type:note" :line 0}
+         {:text "#name:messi #type:person" :line 1}])
   (is (= "person"
          (:type (d/find-first :name "messi")))))
 

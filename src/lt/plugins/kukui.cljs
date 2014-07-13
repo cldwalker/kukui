@@ -132,7 +132,7 @@
 (defn db-types-counts [lines]
   (let [nodes (db/->nodes lines)]
     (println "Tag counts")
-    (prn (db/tag-counts lines))
+    (pprint (db/tag-counts lines))
     (println "Tag counts by type")
     (prn (map (fn [[type tag-map]]
                 [type (apply + (vals tag-map))])
