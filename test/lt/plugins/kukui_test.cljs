@@ -65,4 +65,12 @@
                   {:line 3 :indent 4 :text "    shave a #size:big #yak #type:?"}]]
        (= [(assoc (nth nodes 2) :tags #{} :type "note")
            (assoc (nth nodes 3) :tags #{"yak"} :type "?" :size "big")]
+          (k/add-attributes-to-nodes nodes)))))
+  (testing "parent with name attr - gets saved as a node and its tags aren't inherited"
+    (is
+     (let [nodes [{:line 0 :indent 0 :text "#cljs"}
+                  {:line 0 :indent 2 :text "  #name:kukui #type:proj #LT"}
+                  {:line 1 :indent 4 :text "    good stuff #type:note"}]]
+       (= [(assoc (nth nodes 1) :name "kukui" :type "proj" :tags #{"cljs" "LT"})
+           (assoc (nth nodes 2) :type "note" :tags #{"cljs" "kukui"})]
           (k/add-attributes-to-nodes nodes))))))

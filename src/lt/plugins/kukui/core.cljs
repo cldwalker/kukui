@@ -6,6 +6,7 @@
 (def default-tag-char "*")
 (def tag-prefix "#")
 (def type-delimiter ":")
+(def name-attr "name")
 
 ;; This regex returns pairs of matches but only the latter is useful. This
 ;; is a necessary evil caused by no negative-lookbehind in JS
@@ -89,8 +90,31 @@
 (defn add-node-with-tags [nodes node tags]
   (conj nodes (assoc node :tags (set tags))))
 
+(defn add-node-with-parent-tags [nodes curr parent-tags]
+  (add-node-with-tags
+   nodes
+   curr
+   (concat (mapcat :tags (filter #(< (:indent %) (:indent curr)) parent-tags))
+           (text->tags (:text curr)))))
+
+(defn ->name-value [text]
+  (-> (re-pattern (str tag-prefix name-attr type-delimiter "(\\S+)"))
+      (re-find text)
+      second))
+
+(defn add-custom-attributes [node]
+  (let [[tags attribute-tags] ((juxt remove filter)
+                               #(-> % (.indexOf type-delimiter) (> -1))
+                               (:tags node))]
+    (merge
+     (->> attribute-tags
+          (map #(s/split % (re-pattern type-delimiter)))
+          (map (fn [[k v]] [(keyword k) v]))
+          (into {}))
+     (assoc node :tags (set tags)))))
+
 (defn add-attributes-to-nodes
-  "Adds :tags and :desc to nodes"
+  "Adds :tags, :desc and custom attributes to nodes"
   [nodes]
   (->> nodes
        ;; [] needed to include last element
@@ -98,6 +122,15 @@
        (reduce
         (fn [accum [curr next]]
           (cond
+
+           (and (parent-node? curr next) (->name-value (:text curr)))
+           (-> accum
+               (update-in [:nodes] #(add-node-with-parent-tags % curr (:tags accum)))
+               (update-in [:tags] #(add-node-with-tags
+                                    (vec (remove (fn [tag] (= (:indent tag) (:indent curr))) %))
+                                    curr
+                                    (list (->name-value (:text curr))))))
+
            (parent-node? curr next)
            (update-in accum [:tags]
                       #(add-node-with-tags
@@ -112,24 +145,9 @@
                       curr)
            :else
            (update-in accum [:nodes]
-                      (fn [nodes]
-                        (add-node-with-tags
-                         nodes
-                         curr
-                         (concat (mapcat :tags (filter #(< (:indent %) (:indent curr)) (:tags accum)))
-                                 (text->tags (:text curr))))))))
+                      #(add-node-with-parent-tags % curr (:tags accum)))))
         ;; :nodes - contains all nodes/non-tag lines in the given lines
         ;; :tags - contains all tags but only keeps the latest tag for a given indent
         {:tags #{} :nodes []})
        :nodes
-       (mapv
-        (fn [node]
-          (let [[tags attribute-tags] ((juxt remove filter)
-                                       #(-> % (.indexOf type-delimiter) (> -1))
-                                       (:tags node))]
-            (merge
-             (->> attribute-tags
-                  (map #(s/split % (re-pattern type-delimiter)))
-                  (map (fn [[k v]] [(keyword k) v]))
-                  (into {}))
-             (assoc node :tags (set tags))))))))
+       (mapv add-custom-attributes)))
