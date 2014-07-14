@@ -442,37 +442,6 @@
                                        (desc-node? (line->node ed (inc %))))
                                      (range line end-line))))})
 
-(cmd/command {:command :kukui.save-file-to-db
-              :desc "kukui: Saves types and entities of types to db"
-              :exec (fn []
-                      (let [ed (pool/last-active)
-                            lines (range (editor/first-line ed)
-                                         (inc (editor/last-line ed)))
-                            nodes (ed->nodes ed lines)
-                            type-records (->> nodes
-                                              (keep :type)
-                                              distinct
-                                              (map #(hash-map :name % :type "type")))
-                            note-entity-records (->> nodes
-                                                     (filter :name)
-                                                     (map #(select-keys % [:name :type])))
-                            known-names (set (map :name (concat note-entity-records type-records)))
-                            node-config (config/dynamic-config nodes)
-                            ;; Update :unknown to tia other types + tags outside of config
-                            node-config (update-in node-config [:types :unknown :names] #(apply disj % known-names))
-                            config-entity-records (mapcat (fn [[type type-map]]
-                                                            (->> type-map
-                                                                 :names
-                                                                 (map #(hash-map :name % :type (name type)))))
-                                                          (:types node-config))
-                            config-type-records (->> (:types node-config)
-                                                     keys
-                                                     (map name)
-                                                     (#(apply disj (set %) (map :name type-records)))
-                                                     (map #(hash-map :name % :type "type")))]
-                        ))})
-
-
 (cmd/command {:command :kukui.sync-file-to-db
               :desc "kukui: Syncs file to db"
               :exec (fn []
