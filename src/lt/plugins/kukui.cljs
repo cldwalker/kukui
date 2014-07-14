@@ -10,7 +10,7 @@
             [lt.plugins.kukui.util :as util]
             [lt.plugins.kukui.config :as config]
             [lt.plugins.kukui.core :refer [text->tags tag-prefix text->tag-group indent-nodes
-                                           desc-node? type-delimiter]]
+                                           desc-node? attr-delimiter]]
             [lt.plugins.kukui.node :refer [ed->nodes line->node]]
             [lt.plugins.kukui.sync :as sync]
             [lt.plugins.kukui.db :as db]
@@ -220,8 +220,8 @@
   [ed type-or-view & {:keys [level query-tag lines] :or {level 1}}]
   (let [nodes (ed->nodes ed lines)
         nodes (if query-tag
-                (if (-> query-tag (.indexOf type-delimiter) (> -1))
-                  (let [[attr value] (s/split query-tag (re-pattern type-delimiter))
+                (if (-> query-tag (.indexOf attr-delimiter) (> -1))
+                  (let [[attr value] (s/split query-tag (re-pattern attr-delimiter))
                         attr (keyword attr)]
                     (filter #(= value (attr %)) nodes))
                   (filter #(contains? (:tags %) query-tag) nodes))
@@ -234,9 +234,9 @@
         tags-nodes (save-tags tags-nodes)
         new-nodes (mapcat
                    (fn [tag]
-                     (let [children (if (-> tag (.indexOf type-delimiter) (> -1))
+                     (let [children (if (-> tag (.indexOf attr-delimiter) (> -1))
                                       ;; can't use a tag index for attr queries
-                                      (let [[attr value] (s/split tag (re-pattern type-delimiter))
+                                      (let [[attr value] (s/split tag (re-pattern attr-delimiter))
                                             attr (keyword attr)]
                                         (filter #(= value (attr %)) nodes))
                                       (get tags-nodes tag))]

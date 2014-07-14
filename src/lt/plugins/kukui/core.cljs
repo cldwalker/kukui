@@ -5,7 +5,7 @@
 
 (def default-tag-char "*")
 (def tag-prefix "#")
-(def type-delimiter ":")
+(def attr-delimiter ":")
 (def name-attr "name")
 
 ;; This regex returns pairs of matches but only the latter is useful. This
@@ -98,17 +98,17 @@
            (text->tags (:text curr)))))
 
 (defn ->name-value [text]
-  (-> (re-pattern (str tag-prefix name-attr type-delimiter "(\\S+)"))
+  (-> (re-pattern (str tag-prefix name-attr attr-delimiter "(\\S+)"))
       (re-find text)
       second))
 
 (defn add-custom-attributes [node]
   (let [[tags attribute-tags] ((juxt remove filter)
-                               #(-> % (.indexOf type-delimiter) (> -1))
+                               #(-> % (.indexOf attr-delimiter) (> -1))
                                (:tags node))]
     (merge
      (->> attribute-tags
-          (map #(s/split % (re-pattern type-delimiter)))
+          (map #(s/split % (re-pattern attr-delimiter)))
           (map (fn [[k v]] [(keyword k) v]))
           (into {}))
      (assoc node :tags (set tags)))))
