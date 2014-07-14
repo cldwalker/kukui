@@ -5,6 +5,15 @@
 (def unknown-type "unknown")
 (def root-type "type")
 
+;; Rules
+;; =====
+
+(def lines-rule '[[(lines ?e ?first-line ?last-line)
+                   [?e :line ?line]
+                   [(<= ?first-line ?line ?last-line)]]])
+(def rules
+  (concat lines-rule))
+
 ;; Queries
 ;; =======
 (defn name-id-map []
@@ -85,15 +94,6 @@
       (throw (ex-info (str "Type must be present")
                       {:invalid invalid})))
     entities))
-
-;; Rules
-;; =====
-
-(def lines-rule '[[(lines ?e ?first-line ?last-line)
-                   [?e :line ?line]
-                   [(<= ?first-line ?line ?last-line)]]])
-(def rules
-  (concat lines-rule))
 
 ;; Misc
 ;; ====
