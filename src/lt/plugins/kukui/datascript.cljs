@@ -32,16 +32,21 @@
   (map #(entity (first %))
        (apply q query args)))
 
+(defn find-by
+  "Returns entity maps for given attr and value"
+  [attr value]
+  (qe '[:find ?e
+               :in $ ?attr ?type
+               :where [?e ?attr ?type]]
+             attr value))
+
 (defn find-first
   "Returns first entity map for given attr and value"
   [attr value]
-  (first (qe '[:find ?e
-               :in $ ?attr ?type
-               :where [?e ?attr ?type]]
-             attr value)))
+  (first (find-by attr value)))
 
 (defn find-all
-  "Returns all entities as map"
+  "Returns all entities as maps"
   []
   (qe '[:find ?e
         :where [?e]]))

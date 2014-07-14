@@ -14,6 +14,7 @@
             [lt.plugins.kukui.node :refer [ed->nodes line->node]]
             [lt.plugins.kukui.sync :as sync]
             [lt.plugins.kukui.db :as db]
+            [lt.plugins.kukui.datascript :as d]
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 
@@ -33,14 +34,19 @@
                             lines (range line (c/safe-next-non-child-line ed line))]
                         (prn (->tagged-counts ed nil))))})
 
+(defn db->nodes [ed lines]
+  (db/->nodes (or lines
+                  (if-let [selection (editor/selection-bounds ed)]
+                    (range (get-in selection [:from :line])
+                           (inc (get-in selection [:to :line])))
+                    (let [line (.-line (editor/cursor ed))]
+                      (range line (c/safe-next-non-child-line ed line)))))))
+
 (cmd/command {:command :kukui.db-tag-counts
               :desc "kukui: db tag counts in current branch's nodes"
               :exec (fn []
-                      (let [ed (pool/last-active)
-                            line (.-line (editor/cursor ed))
-                            lines (range line (c/safe-next-non-child-line ed line))]
-                        (prn (->> lines
-                                  db/->nodes
+                      (let [ed (pool/last-active)]
+                        (prn (->> (db->nodes ed nil)
                                   (mapcat :tags)
                                   frequencies))))})
 
@@ -214,6 +220,8 @@
                  [tag (vec new-nodes)])))
            tags-nodes))))
 
+(def leftover-tag "leftover")
+
 (defn ->view
   "Creates a view given a type or a view config and the editor (branch) to use. A view
   pivots the current branch by changing the parents of a branch."
@@ -228,7 +236,8 @@
                 nodes)
         view-config (if (map? type-or-view)
                       type-or-view
-                      (get-in (config/dynamic-config nodes) [:types type-or-view]))
+                      {:names (conj (vec (sort (map :name (d/find-by :type (name type-or-view))))) leftover-tag)
+                       :default leftover-tag})
         tags-nodes (type-map view-config nodes)
         tags-nodes (ensure-unique-nodes tags-nodes)
         tags-nodes (save-tags tags-nodes)
@@ -251,7 +260,8 @@
 
 (def type-selector
   (selector/selector {:items (fn []
-                               (map #(hash-map :name (name %)) (keys (:types config/config))))
+                               (sort-by :name
+                                        (map #(select-keys % [:name]) (d/find-by :type db/root-type))))
                       :key :name}))
 
 (defn check-types-counts
@@ -262,8 +272,8 @@
          new-lines (when lines (range (first lines) (+ new-body-count (first lines))))
          after-replace-counts (types-counts ed new-lines)]
          (when-not (= before-replace-counts after-replace-counts)
-           (cmd/exec! :editor.undo)
-           (notifos/set-msg! "Before and after type counts not equal. Please submit your outline as an issue." {:class "error"})
+           ;; (cmd/exec! :editor.undo)
+           ;; (notifos/set-msg! "Before and after type counts not equal. Please submit your outline as an issue." {:class "error"})
            (println "BEFORE: " before-replace-counts "\nAFTER: " after-replace-counts)))))
 
 (defn replace-children [ed view-fn]
@@ -278,13 +288,14 @@
                          new-body)
          new-body)))))
 
+;; results at next level under cursor
 (cmd/command {:command :kukui.type-replace-children
               :desc "kukui: replaces current children with new type view"
               :options type-selector
               :exec (fn [type]
                       (replace-children (pool/last-active)
                                         #(->view % (keyword (:name type)))))})
-
+;; results at same level as cursor
 (cmd/command {:command :kukui.type-replace-branch
               :desc "kukui: replaces current branch with new type view"
               :options type-selector
