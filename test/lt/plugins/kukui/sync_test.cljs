@@ -10,7 +10,9 @@
   (db/init)
   (reset! sync/last-edits {}))
 
-(use-fixtures :each reset-sync!)
+(use-fixtures :each (fn [f]
+                      (reset-sync!)
+                      (f)))
 
 (defn ->nodes [nodes]
   (->> nodes
