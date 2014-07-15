@@ -18,6 +18,7 @@
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 
+(def leftover-tag "leftover")
 
 (defn ->tagged-counts
   "For given lines, returns map of tags and how many nodes have that tag."
@@ -58,7 +59,7 @@
    (fn [accum node]
      (let [type-tags (cset/intersection (:tags node)
                                         (set (:names type-config)))
-           type-tags (if (empty? type-tags) [(:default type-config)] type-tags)]
+           type-tags (if (empty? type-tags) [leftover-tag] type-tags)]
        #_(prn node type-tags)
        (reduce #(f %1 %2 node) accum type-tags)))
    {}
@@ -68,13 +69,14 @@
 
 (defn types-counts [ed lines]
   (let [nodes (ed->nodes ed lines)
-        types-config (config/dynamic-config nodes)]
+        types (db/types-and-names)]
     (keep
-     #(let [counts (type-counts (get-in types-config [:types %]) nodes)]
+     #(let [counts (type-counts (some (fn [x] (when (= (:type x) %) x)) types)
+                                nodes)]
         (when-not (and (= 1 (count counts))
-                       (get counts (get-in types-config [:types % :default])))
+                       (get counts leftover-tag))
           (vector % counts)))
-     (keys (:types types-config)))))
+     (map :type types))))
 
 (defn total-types-counts
   "Different than type-counts in that this only counts total for each type
@@ -83,10 +85,14 @@
   [ed lines]
   (let [line (.-line (editor/cursor ed))
         lines (or lines (range line (c/safe-next-non-child-line ed line)))
-        tagged-counts (->tagged-counts ed lines)]
+        tagged-counts (->tagged-counts ed lines)
+        types (db/types-and-names)
+        find-type (fn [tag]
+                    (some #(when (contains? (set (:names %)) tag)
+                             (:type %)) types))]
     (reduce-kv
      (fn [accum tag count]
-       (update-in accum [(config/find-type tag)]
+       (update-in accum [(find-type tag)]
                   (fnil + 0) count))
      {}
      tagged-counts)))
@@ -219,8 +225,6 @@
                (when (seq new-nodes)
                  [tag (vec new-nodes)])))
            tags-nodes))))
-
-(def leftover-tag "leftover")
 
 (defn ->view
   "Creates a view given a type or a view config and the editor (branch) to use. A view
