@@ -16,8 +16,6 @@
   [ed lines]
   (let [nodes (->> lines
                    (map #(line->node ed %))
-                   (map #(if (re-find #"^\s*:config" (:text %))
-                           (update-in % [:text] str " " tag-prefix ignore-tag) %))
                    add-attributes-to-nodes)]
     (remove #(contains? (:tags %) ignore-tag) nodes)))
 
