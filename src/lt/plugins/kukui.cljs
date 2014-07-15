@@ -323,20 +323,26 @@
 ;; Query commands
 ;; ==============
 
+
+(defn ->view-config [names no-default]
+  {:names (if no-default names (conj names leftover-tag))
+   :default leftover-tag})
+
 (defn ->query-view
   "Create a view given a query. There are two formats.
   With parent:    #type: tag1, tag2, type:note
   Without parent: tag1, tag2"
-  [ed query & {:keys [level view-fn types-config lines]
+  [ed query & {:keys [level view-fn types lines]
                :or {level 1
                     ;; doesn't add leftover to query
-                    view-fn #(config/->type-config % true)}}]
-  (let [{:keys [parent-tag tags]} (text->tag-group types-config query)
+                    view-fn #(->view-config % true)}}]
+  (let [{:keys [parent-tag tags]} (text->tag-group types query)
         view-config (view-fn tags)]
     (->view ed view-config
             :level level :query-tag parent-tag :lines lines)))
 
-;; always add leftover to query
+;; cursor should be on parent and query should replace it e.g. #p0 -> datascript
+;; always adds leftover to query
 (cmd/command {:command :kukui.query-replace-children
               :desc "kukui: replaces current children based on current node's query"
               :exec (fn []
@@ -344,13 +350,14 @@
                             line (.-line (editor/cursor ed))
                             end-line (c/safe-next-non-child-line ed line)
                             new-body (->query-view ed (editor/line ed line)
-                                                   :types-config config/config
-                                                   :view-fn #(config/->type-config % nil))]
+                                                   :types (db/types-and-names)
+                                                   :view-fn #(->view-config % nil))]
                         (editor/replace (editor/->cm-ed ed)
                                         {:line (inc line) :ch 0}
                                         {:line end-line :ch 0}
                                         new-body)))})
 
+;; cursor should be first sibling of queried children
 (cmd/command {:command :kukui.query-insert-children
               :desc "kukui: inserts children based on current node's query and parent's children"
               :exec (fn []
@@ -358,7 +365,7 @@
                             line (.-line (editor/cursor ed))
                             lines (util/find-parent-lines ed line)
                             new-body (->query-view ed (editor/line ed line)
-                                                   :types-config config/config
+                                                   :types (db/types-and-names)
                                                    :lines lines)]
                         (if (s/blank? new-body)
                           (notifos/set-msg! (str "No results for '" (editor/line ed line) "'"))

@@ -66,6 +66,17 @@
     #(assoc-in %1 (butlast %2) (last %2))
     {})))
 
+(defn types-and-names
+  "Returns a list of types with each type having entity names of that type"
+  []
+  (->> (d/q '[:find ?type ?name
+              :where
+              [?children :type ?type]
+              [?children :name ?name]])
+       (group-by first)
+       (map (fn [[type pairs]]
+              {:type type :names (map second pairs)}))))
+
 ;; Validations
 ;; ===========
 (defn must-have-unique-name [entities]
@@ -105,7 +116,6 @@
 (init)
 
 (comment
-
   ;; counts by type
   (sort-by (comp - second)
            (d/q '[:find ?type (count ?e)

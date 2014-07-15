@@ -32,17 +32,16 @@
 ;; Note this doesn't expand unknown type
 (defn expand-tag
   "Expands a tag if it's a type"
-  [types-config tag]
-  (if (contains? (set (keys (:types types-config)))
-                 (keyword tag))
-    (get-in types-config [:types (keyword tag) :names])
+  [types tag]
+  (if (contains? (set (map :type types)) tag)
+    (some #(when (= (:type %) tag) (vec (:names %))) types)
     [tag]))
 
 (defn text->tag-group
   "Used by query view and config to associate a parent tag (type) with its tags.
   To specify a default tag use an asterisk after a tag. For example:
   #type: tag1, tag2*"
-  [types-config text]
+  [types text]
   {:pre [(seq text)]}
   (let [[_ parent-tag tags-string] (re-find #"^\s*(\S+:|)\s*(.*)$" text)
         parent-tag (if (seq parent-tag) (first (text->tags parent-tag)) nil)
@@ -55,7 +54,7 @@
                      first)
         tags (text->tags
               (s/join " " (map #(str tag-prefix %) raw-tags)))
-        tags (mapcat (partial expand-tag types-config) tags)]
+        tags (mapcat (partial expand-tag types) tags)]
     {:parent-tag parent-tag :tags tags :default-tag default-tag}))
 
 (defn indent-node [node indent]
