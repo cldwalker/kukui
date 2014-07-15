@@ -111,7 +111,8 @@
 (defn init []
   (d/reset-connection! {:tags {:db/valueType :db.type/ref
                                :db/cardinality :db.cardinality/many}})
-  (d/transact! [{:name root-type :type root-type}]))
+  (d/transact! [{:name root-type :type root-type}
+                {:name unknown-type :type root-type}]))
 
 (init)
 
