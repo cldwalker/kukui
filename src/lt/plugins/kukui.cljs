@@ -8,7 +8,6 @@
             [clojure.string :as s]
             [lt.plugins.kukui.selector :as selector]
             [lt.plugins.kukui.util :as util]
-            [lt.plugins.kukui.config :as config]
             [lt.plugins.kukui.core :refer [text->tags tag-prefix text->tag-group indent-nodes
                                            desc-node? attr-delimiter]]
             [lt.plugins.kukui.node :refer [ed->nodes line->node]]
@@ -426,20 +425,6 @@
         sibling-lines (filter #(when (= current-indent (c/line-indent ed %)) %)
                               parent-lines)]
     (map (partial line->node ed) sibling-lines)))
-
-(defmethod config/save :level-type [_ {:keys [editor value]}]
-  (let [line (.-line (editor/cursor editor))
-        ;; Doesn't tia ignore tag. Assume all siblings are tagged
-        siblings (mapcat #(text->tags (:text %))
-                         (sibling-nodes editor line))]
-    (config/merge-config {(keyword value) {:names siblings}}
-                         :into-type)))
-
-
-(cmd/command {:command :kukui.save-current-config
-              :desc "kukui: Saves config for the current line"
-              :exec (fn []
-                      (config/save-current-config (pool/last-active)))})
 
 (cmd/command {:command :kukui.toggle-descs
               :desc "kukui: Toggle visibility of descs of current children"
