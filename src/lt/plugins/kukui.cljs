@@ -53,11 +53,11 @@
 
 (defn type-nodes->tag-map
   "Reduces a type's nodes to a tag map with a reducer fn."
-  [f type-config nodes]
+  [f types nodes]
   (reduce
    (fn [accum node]
      (let [type-tags (cset/intersection (:tags node)
-                                        (set (:names type-config)))
+                                        (set (:names types)))
            type-tags (if (empty? type-tags) [leftover-tag] type-tags)]
        #_(prn node type-tags)
        (reduce #(f %1 %2 node) accum type-tags)))
