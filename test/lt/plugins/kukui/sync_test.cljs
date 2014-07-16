@@ -69,6 +69,18 @@
                           (d/qe '[:find ?e
                                   :where [?e :text]]))))))
 
+(deftest named-entity-updates-line-or-text
+  (let [node {:text "#name:fan blows oh so nicely #type:note" :line 0}
+        updated-nodes [{:text "#summer #type:note" :line 0}
+                       (-> node (update-in [:text] #(str "  " %)) (assoc :line 1))]]
+    (sync [node])
+
+    (let [existing (d/find-first :name "fan")]
+      (sync updated-nodes)
+      (is (= (nth updated-nodes 1)
+             (select-keys (d/entity (:db/id existing))
+                          [:text :line]))))))
+
 (deftest tag-can-have-its-entity-updated-later
   (sync [{:text "rooting for #messi #type:note" :line 0}
          {:text "#name:messi #type:person" :line 1}])

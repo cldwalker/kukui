@@ -60,11 +60,12 @@
          (cond
 
           ;; update existing named thing
-          (when-let [existing-name (get name-entities (:name node))]
-               (not= (:type existing-name) (:type node)))
+          (when-let [existing (get name-entities (:name node))]
+            (not= (dissoc existing :db/id) (dissoc node :tags)))
           (update-in accum [:updated] (fnil conj [])
-                     {:db/id (:db/id (get name-entities (:name node)))
-                      :type (:type node)})
+                     (-> node
+                         (dissoc :tags)
+                         (assoc :db/id (:db/id (get name-entities (:name node))))))
 
           ;; could be updated text
           (nil? old-node)
