@@ -138,6 +138,11 @@
       (save-latest-edit nodes file)
       tx-report)))
 
+
+(defn reset-sync! []
+  (db/init)
+  (reset! last-edits {}))
+
 (comment
   ;; diff
   (def current-edits (-> @last-edits vals first))

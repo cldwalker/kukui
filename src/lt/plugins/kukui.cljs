@@ -454,6 +454,10 @@
                             (prn e (ex-data e))
                             (println (.-stack e))))))})
 
+(cmd/command {:command :kukui.reset-sync
+              :desc "kukui: Resets sync"
+              :exec sync/reset-sync!})
+
 (comment
   (->> entity-records
        first

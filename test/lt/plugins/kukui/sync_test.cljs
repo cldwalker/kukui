@@ -6,12 +6,8 @@
             [lt.plugins.kukui.core :as kc]
             [cemerick.cljs.test :as t]))
 
-(defn reset-sync! []
-  (db/init)
-  (reset! sync/last-edits {}))
-
 (use-fixtures :each (fn [f]
-                      (reset-sync!)
+                      (sync/reset-sync!)
                       (f)))
 
 (defn ->nodes [nodes]
