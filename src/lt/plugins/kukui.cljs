@@ -68,6 +68,11 @@
               :exec (fn []
                       (util/pprint (ed->nodes (pool/last-active))))})
 
+(cmd/command {:command :kukui.debug-db-nodes
+              :desc "kukui: prints db nodes for current branch or selection"
+              :exec (fn []
+                      (util/pprint (db->nodes (pool/last-active) nil)))})
+
 ;; Type view commands
 ;; ==================
 
@@ -169,8 +174,8 @@
          new-lines (when lines (range (first lines) (+ new-body-count (first lines))))
          after-replace-counts (live/types-counts ed new-lines)]
          (when-not (= before-replace-counts after-replace-counts)
-           ;; (cmd/exec! :editor.undo)
-           ;; (notifos/set-msg! "Before and after type counts not equal. Please submit your outline as an issue." {:class "error"})
+           (cmd/exec! :editor.undo)
+           (notifos/set-msg! "Before and after type counts not equal. Please submit your outline as an issue." {:class "error"})
            (println "BEFORE: " before-replace-counts "\nAFTER: " after-replace-counts)))))
 
 (defn replace-children [ed view-fn]
