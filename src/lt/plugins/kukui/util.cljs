@@ -1,6 +1,7 @@
 (ns lt.plugins.kukui.util
   (:require [lt.objs.editor :as editor]
             [lt.objs.editor.pool :as pool]
+            [clojure.string :as s]
             [lt.plugins.sacha.codemirror :as c]))
 
 (defn insert-at-next-line
@@ -25,3 +26,8 @@
 
 (defn current-file []
   (-> @(pool/last-active) :info :path))
+
+(defn pprint
+  "Useful for printing list or vec of maps. Hack until actual cljs.pprint exists"
+  [data]
+  (println (s/join "\n" data)))

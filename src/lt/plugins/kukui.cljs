@@ -11,28 +11,12 @@
             [lt.plugins.kukui.core :refer [text->tags tag-prefix text->tag-group indent-nodes
                                            desc-node? attr-delimiter]]
             [lt.plugins.kukui.node :refer [ed->nodes line->node]]
+            [lt.plugins.kukui.live :as live]
             [lt.plugins.kukui.sync :as sync]
             [lt.plugins.kukui.db :as db]
             [lt.plugins.kukui.datascript :as d]
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
-
-(def leftover-tag "leftover")
-
-(defn ->tagged-counts
-  "For given lines, returns map of tags and how many nodes have that tag."
-  [ed lines]
-  (->> (ed->nodes ed lines)
-       (mapcat :tags)
-       frequencies))
-
-(cmd/command {:command :kukui.tag-counts
-              :desc "kukui: tag counts in current branch's nodes"
-              :exec (fn []
-                      (let [ed (pool/last-active)
-                            line (.-line (editor/cursor ed))
-                            lines (range line (c/safe-next-non-child-line ed line))]
-                        (prn (->tagged-counts ed nil))))})
 
 (defn db->nodes [ed lines]
   (db/->nodes (or lines
@@ -50,100 +34,10 @@
                                   (mapcat :tags)
                                   frequencies))))})
 
-
-(defn type-nodes->tag-map
-  "Reduces a type's nodes to a tag map with a reducer fn."
-  [f types nodes]
-  (reduce
-   (fn [accum node]
-     (let [type-tags (cset/intersection (:tags node)
-                                        (set (:names types)))
-           type-tags (if (empty? type-tags) [leftover-tag] type-tags)]
-       #_(prn node type-tags)
-       (reduce #(f %1 %2 node) accum type-tags)))
-   {}
-   nodes))
-
-(def type-counts (partial type-nodes->tag-map #(update-in %1 [%2] inc)))
-
-(defn types-counts [ed lines]
-  (let [nodes (ed->nodes ed lines)
-        types (db/types-and-names)]
-    (keep
-     #(let [counts (type-counts (some (fn [x] (when (= (:type x) %) x)) types)
-                                nodes)]
-        (when-not (and (= 1 (count counts))
-                       (get counts leftover-tag))
-          (vector % counts)))
-     (map :type types))))
-
-(defn total-types-counts
-  "Different than type-counts in that this only counts total for each type
-  and is only based on explicit tags - no defaults are taken into account.
-  Also, one node gets counted for each of its tags."
-  [ed lines]
-  (let [line (.-line (editor/cursor ed))
-        lines (or lines (range line (c/safe-next-non-child-line ed line)))
-        tagged-counts (->tagged-counts ed lines)
-        types (db/types-and-names)
-        find-type (fn [tag]
-                    (some #(when (contains? (set (:names %)) tag)
-                             (:type %)) types))]
-    (reduce-kv
-     (fn [accum tag count]
-       (update-in accum [(find-type tag)]
-                  (fnil + 0) count))
-     {}
-     tagged-counts)))
-
-
-(defn attribute-counts* [nodes attr]
-  (println "Attribute:" attr "exists for"
-           (count (filter attr nodes)) "of"
-           (count nodes) "nodes")
-  (prn (reduce
-        (fn [accum val]
-          (update-in accum [val] inc))
-        {}
-        (map attr nodes))))
-
-(defn attribute-counts [nodes]
-  (doseq [attr (-> (mapcat keys nodes) set (disj :desc :tags :indent :line :text))]
-    (attribute-counts* nodes attr)))
-
-(defn pprint
-  "Useful for printing list or vec of maps. Hack until actual cljs.pprint exists"
-  [data]
-  (println (s/join "\n" data)))
-
-(cmd/command {:command :kukui.types-counts
-              :desc "kukui: tag counts of each type for current branch or selection"
-              :exec (fn []
-                      (let [ed (pool/last-active)
-                            nodes (ed->nodes ed nil)]
-                        (pprint (types-counts ed nil))
-                        (prn (assoc (total-types-counts ed nil)
-                               "untagged" (count (filter (comp empty? :tags) nodes))
-                               "nodes" (count nodes)))
-                        (attribute-counts nodes)))})
-
-(cmd/command {:command :kukui.all-types-counts
-              :desc "kukui: Same as types-counts but for whole file"
-              :exec (fn []
-                      (let [ed (pool/last-active)
-                            lines (range (editor/first-line ed)
-                                         (inc (editor/last-line ed)))
-                            nodes (ed->nodes ed lines)]
-                        (pprint (types-counts ed lines))
-                        (prn (assoc (total-types-counts ed lines)
-                               "untagged" (count (filter (comp empty? :tags) nodes))
-                               "nodes" (count nodes)))
-                        (attribute-counts nodes)))})
-
 (defn db-types-counts [lines]
   (let [nodes (db/->nodes lines)]
     (println "Tag counts")
-    (pprint (db/tag-counts lines))
+    (util/pprint (db/tag-counts lines))
     (println "Tag counts by type")
     (prn (map (fn [[type tag-map]]
                 [type (apply + (vals tag-map))])
@@ -151,7 +45,7 @@
     (prn "Misc counts" {:untagged (count (filter (comp empty? :tags) nodes))
                         :nodes (count nodes)})
     (println "Type counts")
-    (pprint (db/attr-counts lines :type))))
+    (util/pprint (db/attr-counts lines :type))))
 
 (cmd/command {:command :kukui.db-types-counts
               :desc "kukui: db tag counts of each type for current branch or selection"
@@ -172,12 +66,12 @@
 (cmd/command {:command :kukui.debug-nodes
               :desc "kukui: prints nodes for current branch or selection"
               :exec (fn []
-                      (pprint (ed->nodes (pool/last-active))))})
+                      (util/pprint (ed->nodes (pool/last-active))))})
 
 ;; Type view commands
 ;; ==================
 
-(def type-map (partial type-nodes->tag-map #(update-in %1 [%2] (fnil conj []) %3)))
+(def type-map (partial live/type-nodes->tag-map #(update-in %1 [%2] (fnil conj []) %3)))
 
 (defn add-tags-to-node [node tags]
   (update-in node [:text] str
@@ -239,8 +133,8 @@
                 nodes)
         view-config (if (map? type-or-view)
                       type-or-view
-                      {:names (conj (vec (sort (map :name (d/find-by :type (name type-or-view))))) leftover-tag)
-                       :default leftover-tag})
+                      {:names (conj (vec (sort (map :name (d/find-by :type (name type-or-view))))) live/leftover-tag)
+                       :default live/leftover-tag})
         tags-nodes (type-map view-config nodes)
         tags-nodes (ensure-unique-nodes tags-nodes)
         tags-nodes (save-tags tags-nodes)
@@ -270,10 +164,10 @@
 (defn check-types-counts
   ([ed editor-fn] (check-types-counts ed editor-fn nil))
   ([ed editor-fn lines]
-   (let [before-replace-counts (types-counts ed lines)
+   (let [before-replace-counts (live/types-counts ed lines)
          new-body-count (count (s/split-lines (editor-fn)))
          new-lines (when lines (range (first lines) (+ new-body-count (first lines))))
-         after-replace-counts (types-counts ed new-lines)]
+         after-replace-counts (live/types-counts ed new-lines)]
          (when-not (= before-replace-counts after-replace-counts)
            ;; (cmd/exec! :editor.undo)
            ;; (notifos/set-msg! "Before and after type counts not equal. Please submit your outline as an issue." {:class "error"})
@@ -328,8 +222,8 @@
 
 
 (defn ->view-config [names no-default]
-  {:names (if no-default names (conj names leftover-tag))
-   :default leftover-tag})
+  {:names (if no-default names (conj names live/leftover-tag))
+   :default live/leftover-tag})
 
 (defn ->query-view
   "Create a view given a query. There are two formats.
