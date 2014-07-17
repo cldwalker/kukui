@@ -59,11 +59,11 @@
         updated-nodes [{:text "drink chocolate #type:td" :line 0}
                        (assoc node :line 1)]]
     (sync [node])
-    (sync updated-nodes)
-    (is (= updated-nodes (map
-                          #(select-keys % [:text :line])
-                          (d/qe '[:find ?e
-                                  :where [?e :text]]))))))
+    (let [existing (d/find-first :line 0)]
+      (sync updated-nodes)
+      (is (= (nth updated-nodes 1)
+             (select-keys (d/entity (:db/id existing))
+                          [:text :line]))))))
 
 (deftest named-entity-updates-line-or-text
   (let [node {:text "#name:fan blows oh so nicely #type:note" :line 0}
@@ -91,7 +91,7 @@
          (:type (d/find-first :name "messi")))))
 
 (comment
-  (reset-sync!)
+  (sync/reset-sync!)
 
   (sync/sync [{:text "whoop" :type "td"}] "/ok/path")
   (d/entity 5)
