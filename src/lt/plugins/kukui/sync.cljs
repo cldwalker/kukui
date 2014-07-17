@@ -98,6 +98,7 @@
        add-types
        expand-tags
        db/must-have-unique-name
+       db/must-have-string-name
        db/must-require-type))
 
 (defn must-have-ids [entities]

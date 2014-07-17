@@ -95,6 +95,16 @@
                       {:names (map :name invalid)})))
     entities))
 
+(defn must-have-string-name [entities]
+  (when-let [invalid (->> entities
+                          (filter #(contains? % :name))
+                          (remove #(string? (:name %)))
+                          seq)]
+    (prn "INVALID" invalid)
+    (throw (ex-info (str "Names must be strings:" (map :name invalid))
+                    {:invalid invalid})))
+  entities)
+
 (defn must-require-type [entities]
   (let [invalid (->> entities
                      (remove #(or (integer? (:tags %))
