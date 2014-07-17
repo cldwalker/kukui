@@ -77,18 +77,19 @@
              (select-keys (d/entity (:db/id existing))
                           [:text :line]))))))
 
-(deftest tag-can-have-its-entity-updated-later
+(deftest named-entity-uses-last-type-in-sync
   (sync [{:text "rooting for #messi #type:note" :line 0}
          {:text "#name:messi #type:person" :line 1}])
   (is (= "person"
          (:type (d/find-first :name "messi")))))
 
-(deftest named-entity-can-update-type
+(deftest named-entity-updates-type
   (sync [{:text "rooting for #messi #type:note" :line 0}])
-  (sync [{:text "rooting for #messi #type:note" :line 0}
-         {:text "#name:messi #type:person" :line 1}])
-  (is (= "person"
-         (:type (d/find-first :name "messi")))))
+  (let [existing (d/find-first :name "messi")]
+    (sync [{:text "rooting for #messi #type:note" :line 0}
+           {:text "#name:messi #type:person" :line 1}])
+    (is (= "person"
+           (:type (d/entity (:db/id existing)))))))
 
 (comment
   (sync/reset-sync!)
