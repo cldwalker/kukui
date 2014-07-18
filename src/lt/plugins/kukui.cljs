@@ -18,13 +18,16 @@
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 
-(defn db->nodes [ed lines]
-  (db/->nodes (or lines
-                  (if-let [selection (editor/selection-bounds ed)]
-                    (range (get-in selection [:from :line])
-                           (inc (get-in selection [:to :line])))
-                    (let [line (.-line (editor/cursor ed))]
-                      (range line (c/safe-next-non-child-line ed line)))))))
+(defn current-lines [ed]
+  (if-let [selection (editor/selection-bounds ed)]
+    (range (get-in selection [:from :line])
+           (inc (get-in selection [:to :line])))
+    (let [line (.-line (editor/cursor ed))]
+      (range line (c/safe-next-non-child-line ed line)))))
+
+(defn db->nodes
+  ([ed] (db->nodes ed (current-lines ed)))
+  ([ed lines] (db/->nodes lines)))
 
 (cmd/command {:command :kukui.db-tag-counts
               :desc "kukui: db tag counts in current branch's nodes"
@@ -50,10 +53,8 @@
 (cmd/command {:command :kukui.db-types-counts
               :desc "kukui: db tag counts of each type for current branch or selection"
               :exec (fn []
-                      (let [ed (pool/last-active)
-                            line (.-line (editor/cursor ed))
-                            lines (range line (c/safe-next-non-child-line ed line))]
-                        (db-types-counts lines)))})
+                      (let [ed (pool/last-active)]
+                        (db-types-counts (current-lines ed))))})
 
 (cmd/command {:command :kukui.db-all-types-counts
               :desc "kukui: Same as types-counts but for whole file"
@@ -128,6 +129,7 @@
   "Creates a view given a type or a view config and the editor (branch) to use. A view
   pivots the current branch by changing the parents of a branch."
   [ed type-or-view & {:keys [level query-tag lines] :or {level 1}}]
+  ;; Can't use db->nodes until types-counts check can tia extra parent tags from db
   (let [nodes (ed->nodes ed lines)
         nodes (if query-tag
                 (if (-> query-tag (.indexOf attr-delimiter) (> -1))
@@ -169,10 +171,10 @@
 (defn check-types-counts
   ([ed editor-fn] (check-types-counts ed editor-fn nil))
   ([ed editor-fn lines]
-   (let [before-replace-counts (live/types-counts ed lines)
+   (let [before-replace-counts (set (live/types-counts ed lines))
          new-body-count (count (s/split-lines (editor-fn)))
          new-lines (when lines (range (first lines) (+ new-body-count (first lines))))
-         after-replace-counts (live/types-counts ed new-lines)]
+         after-replace-counts (set (live/types-counts ed new-lines))]
          (when-not (= before-replace-counts after-replace-counts)
            (cmd/exec! :editor.undo)
            (notifos/set-msg! "Before and after type counts not equal. Please submit your outline as an issue." {:class "error"})
@@ -203,18 +205,17 @@
               :options type-selector
               :exec (fn [type]
                       (let [ed (pool/last-active)
-                            line (.-line (editor/cursor ed))
-                            end-line (c/safe-next-non-child-line ed line)]
+                            lines (current-lines ed)]
                         (check-types-counts
                          ed
                          (fn []
                            (let [new-body (->view ed (keyword (:name type)) :level 0)]
                              (editor/replace (editor/->cm-ed ed)
                                              {:line (:line (editor/->cursor ed)) :ch 0}
-                                             {:line end-line :ch 0}
+                                             {:line (inc (last lines)) :ch 0}
                                              new-body)
                              new-body))
-                         (range line end-line))))})
+                         lines)))})
 
 (cmd/command {:command :kukui.insert-type-branch
               :desc "kukui: inserts new type view for current branch"
@@ -309,14 +310,12 @@
 (cmd/command {:command :kukui.toggle-descs
               :desc "kukui: Toggle visibility of descs of current children"
               :exec (fn []
-                      (let [ed (pool/last-active)
-                            line (.-line (editor/cursor ed))
-                            end-line (c/safe-next-non-child-line ed line)]
+                      (let [ed (pool/last-active)]
                         (util/toggle-all ed
                                          #(and
                                            (not (desc-node? (line->node ed %)))
                                            (desc-node? (line->node ed (inc %))))
-                                         (range line end-line))))})
+                                         (current-lines ed))))})
 
 (cmd/command {:command :kukui.sync-file-to-db
               :desc "kukui: Syncs file to db"
