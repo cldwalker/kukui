@@ -31,3 +31,21 @@
   "Useful for printing list or vec of maps. Hack until actual cljs.pprint exists"
   [data]
   (println (s/join "\n" data)))
+
+;; Move to sacha when appropriate
+(defn toggle-all
+  "Similar to codemirror fold/unfold-all but condition is given line number"
+  ([ed condition]
+   (toggle-all ed condition (range (editor/first-line ed) (inc (editor/last-line ed)))))
+  ([ed condition lines]
+   (editor/operation ed
+                     (fn []
+                       (doseq [line lines]
+                         (when (condition line)
+                           (c/fold-code ed #js {:line line :ch 0} nil)))))))
+
+(defn sibling-lines [ed line]
+  (let [parent-lines (find-parent-lines ed line)
+        current-indent (c/line-indent ed line)]
+    (filter #(when (= current-indent (c/line-indent ed %)) %)
+            parent-lines)))

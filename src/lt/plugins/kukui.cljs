@@ -287,18 +287,6 @@
                                             (c/delete-lines ed parent-line parent-line)
                                             (sacha/indent-branch "subtract")))))})
 
-;; Move to sacha when appropriate
-(defn toggle-all
-  "Similar to codemirror fold/unfold-all but condition is given line number"
-  ([ed condition]
-   (toggle-all ed condition (range (editor/first-line ed) (inc (editor/last-line ed)))))
-  ([ed condition lines]
-   (editor/operation ed
-                     (fn []
-                       (doseq [line lines]
-                         (when (condition line)
-                           (c/fold-code ed #js {:line line :ch 0} nil)))))))
-
 (defn stamp-nodes
   "Stamp children nodes with parent tags"
   [ed]
@@ -318,24 +306,17 @@
                       (replace-children (pool/last-active)
                                         stamp-nodes))})
 
-(defn sibling-nodes [ed line]
-  (let [parent-lines (util/find-parent-lines ed line)
-        current-indent (c/line-indent ed line)
-        sibling-lines (filter #(when (= current-indent (c/line-indent ed %)) %)
-                              parent-lines)]
-    (map (partial line->node ed) sibling-lines)))
-
 (cmd/command {:command :kukui.toggle-descs
               :desc "kukui: Toggle visibility of descs of current children"
               :exec (fn []
                       (let [ed (pool/last-active)
                             line (.-line (editor/cursor ed))
                             end-line (c/safe-next-non-child-line ed line)]
-                        (toggle-all ed
-                                     #(and
-                                       (not (desc-node? (line->node ed %)))
-                                       (desc-node? (line->node ed (inc %))))
-                                     (range line end-line))))})
+                        (util/toggle-all ed
+                                         #(and
+                                           (not (desc-node? (line->node ed %)))
+                                           (desc-node? (line->node ed (inc %))))
+                                         (range line end-line))))})
 
 (cmd/command {:command :kukui.sync-file-to-db
               :desc "kukui: Syncs file to db"
