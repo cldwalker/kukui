@@ -20,6 +20,15 @@
   (into {} (d/q '[:find ?n ?e
                    :where [?e :name ?n]])))
 
+(defn find-by-file-and-line [file line]
+  (first
+   (d/qe '[:find ?e
+           :in $ ?file ?line
+           :where
+           [?e :file ?file]
+           [?e :line ?line]]
+         file line)))
+
 (defn ->nodes
   "Returns nodes with :tags for given range of lines"
   [lines]

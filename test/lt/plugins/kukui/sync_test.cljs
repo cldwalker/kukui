@@ -10,14 +10,18 @@
                       (sync/reset-sync!)
                       (f)))
 
+(def default-file "/some/path")
+
 (defn ->nodes [nodes]
   (->> nodes
        kc/add-attributes-to-nodes
        (mapv
-        #(assoc % :indent (count (re-find #"^\s*" (:text %)))))))
+        #(merge {:file default-file}
+                %
+                {:indent (count (re-find #"^\s*" (:text %)))}))))
 
 (defn sync [nodes]
-  (sync/sync (->nodes nodes) "/some/path"))
+  (sync/sync (->nodes nodes) default-file))
 
 (deftest add-on-first-edit
   (let [new-node {:text "drink coffee #type:td #food" :line 0}]
@@ -59,7 +63,7 @@
         updated-nodes [{:text "drink chocolate #type:td" :line 0}
                        (assoc node :line 1)]]
     (sync [node])
-    (let [existing (d/find-first :line 0)]
+    (let [existing (db/find-by-file-and-line default-file 0)]
       (sync updated-nodes)
       (is (= (nth updated-nodes 1)
              (select-keys (d/entity (:db/id existing))
