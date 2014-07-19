@@ -128,16 +128,18 @@
                   (list nodes))))
 
 (defn sync [nodes file]
-  (let [{:keys [added deleted updated]} (sync-entities nodes file)]
+  (let [nodes (filter #(not (re-find #"^\s*$" (:text %))) nodes)
+        {:keys [added deleted updated]} (sync-entities nodes file)]
     (println "Added/deleted/updated: "
              (count added) "/"
              (count deleted) "/"
              (count updated))
-    ;; Must be separate since there may be overlap
-    (d/transact! deleted)
-    (let [tx-report (d/transact! (into updated added))]
-      (save-latest-edit nodes file)
-      tx-report)))
+    (when (seq nodes)
+      ;; Must be separate since there may be overlap
+      (d/transact! deleted)
+      (let [tx-report (d/transact! (into updated added))]
+        (save-latest-edit nodes file)
+        tx-report))))
 
 
 (defn reset-sync! []
