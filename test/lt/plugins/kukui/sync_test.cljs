@@ -23,6 +23,7 @@
 (defn sync [nodes]
   (sync/sync (->nodes nodes) default-file))
 
+;; Add
 (deftest add-on-first-edit
   (let [new-node {:text "drink coffee #type:td #food" :line 0}]
     (sync [new-node])
@@ -51,6 +52,19 @@
                    [?e :tags ?tag]
                    [?tag :name "some?"]]))))
 
+(deftest named-entity-uses-last-type-in-sync
+  (sync [{:text "rooting for #messi #type:note" :line 0}
+         {:text "#name:messi #type:person" :line 1}])
+  (is (= "person"
+         (:type (d/find-first :name "messi")))))
+
+(deftest add-blank-node-is-ignored
+  (sync [{:text "   " :line 0}])
+  (is (empty? (d/q '[:find ?e :where [?e :line 0]])))
+  (is (seq (d/last-tx))
+      "Last-tx should reflect last actual transaction - not empty one"))
+
+;; Delete
 (deftest delete-text-line
   (sync [{:text "drink chocolate #type:td" :line 0}])
   (sync [{:text "drink coffee #type:td" :line 1}])
@@ -58,6 +72,7 @@
          (d/qf '[:find ?line
                   :where [?e :line ?line]]))))
 
+;; Update
 (deftest update-line
   (let [node {:text "drink coffee #type:td" :line 0}
         updated-nodes [{:text "drink chocolate #type:td" :line 0}
@@ -80,12 +95,6 @@
       (is (= (nth updated-nodes 1)
              (select-keys (d/entity (:db/id existing))
                           [:text :line]))))))
-
-(deftest named-entity-uses-last-type-in-sync
-  (sync [{:text "rooting for #messi #type:note" :line 0}
-         {:text "#name:messi #type:person" :line 1}])
-  (is (= "person"
-         (:type (d/find-first :name "messi")))))
 
 (deftest named-entity-updates-type
   (sync [{:text "rooting for #messi #type:note" :line 0}])
