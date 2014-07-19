@@ -274,6 +274,23 @@
                           (notifos/set-msg! (str "No results for '" (editor/line ed line) "'"))
                           (util/insert-at-next-line ed new-body))))})
 
+(cmd/command {:command :kukui.query-temp-file
+              :desc "kukui: Open query in temp file"
+              :exec
+              (fn []
+                (let [ed (pool/last-active)
+                      line (.-line (editor/cursor ed))
+                      level (/ (c/line-indent ed line)
+                               (editor/option ed "tabSize"))
+                      result (->query-view ed (editor/line ed line)
+                                           :types (db/types-and-names)
+                                           :level (- level)
+                                           :lines (range (editor/first-line ed)
+                                                         (inc (editor/last-line ed))))]
+                  (cmd/exec! :new-file)
+                  (util/insert-at-next-line (pool/last-active)
+                                            result)))})
+
 ;; Misc commands
 ;; =============
 
