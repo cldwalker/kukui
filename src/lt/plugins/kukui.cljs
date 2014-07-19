@@ -4,6 +4,7 @@
             [lt.objs.editor.pool :as pool]
             [lt.objs.editor :as editor]
             [lt.objs.notifos :as notifos]
+            [lt.objs.files :as files]
             [clojure.set :as cset]
             [clojure.string :as s]
             [lt.plugins.kukui.selector :as selector]
@@ -274,22 +275,22 @@
                           (notifos/set-msg! (str "No results for '" (editor/line ed line) "'"))
                           (util/insert-at-next-line ed new-body))))})
 
+;; Only queries whole file for now
 (cmd/command {:command :kukui.query-temp-file
               :desc "kukui: Open query in temp file"
-              :exec
-              (fn []
-                (let [ed (pool/last-active)
-                      line (.-line (editor/cursor ed))
-                      level (/ (c/line-indent ed line)
-                               (editor/option ed "tabSize"))
-                      result (->query-view ed (editor/line ed line)
-                                           :types (db/types-and-names)
-                                           :level (- level)
-                                           :lines (range (editor/first-line ed)
-                                                         (inc (editor/last-line ed))))]
-                  (cmd/exec! :new-file)
-                  (util/insert-at-next-line (pool/last-active)
-                                            result)))})
+              :exec (fn []
+                      (let [ed (pool/last-active)
+                            line (.-line (editor/cursor ed))
+                            level (/ (c/line-indent ed line)
+                                     (editor/option ed "tabSize"))
+                            result (->query-view ed (editor/line ed line)
+                                                 :types (db/types-and-names)
+                                                 :level (- level)
+                                                 :lines (range (editor/first-line ed)
+                                                               (inc (editor/last-line ed))))
+                            path (util/tempfile "kukui-query" ".otl")]
+                        (files/save path result)
+                        (cmd/exec! :open-path path)))})
 
 ;; Misc commands
 ;; =============

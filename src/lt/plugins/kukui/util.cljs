@@ -1,6 +1,7 @@
 (ns lt.plugins.kukui.util
   (:require [lt.objs.editor :as editor]
             [lt.objs.editor.pool :as pool]
+            [lt.objs.files :as files]
             [clojure.string :as s]
             [lt.plugins.sacha.codemirror :as c]))
 
@@ -49,3 +50,7 @@
         current-indent (c/line-indent ed line)]
     (filter #(when (= current-indent (c/line-indent ed %)) %)
             parent-lines)))
+
+(defn tempfile [seed suffix]
+  (let [dir (.tmpdir (js/require "os"))]
+    (files/join dir (str seed "-" (js/Date.now) suffix))))
