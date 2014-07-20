@@ -311,6 +311,20 @@
                         (files/save path result)
                         (cmd/exec! :open-path path)))})
 
+(cmd/command {:command :kukui.query-with-datascript
+              :desc "kukui: Execute a datascript query"
+              :exec (fn []
+                     (let [ed (pool/last-active)
+                           line (editor/line ed (.-line (editor/cursor ed)))
+                           query (cljs.reader/read-string line)
+                           result (d/q query)
+                           result (if (every? #(and (= 1 (count %))
+                                                    (integer? (first %)))
+                                              result)
+                                    (map #(d/entity (first %)) result)
+                                    result)]
+                       (util/pprint result)) )})
+
 ;; Misc commands
 ;; =============
 
