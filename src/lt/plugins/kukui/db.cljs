@@ -8,7 +8,8 @@
 ;; Rules
 ;; =====
 
-(def lines-rule '[[(lines ?e ?first-line ?last-line)
+(def lines-rule '[[(lines ?e ?file ?first-line ?last-line)
+                   [?e :file ?file]
                    [?e :line ?line]
                    [(<= ?first-line ?line ?last-line)]]])
 (def rules
@@ -30,44 +31,42 @@
          file line)))
 
 (defn ->nodes
-  "Returns nodes with :tags for given range of lines"
-  [lines]
+  "Returns nodes with :tags for given file and range of lines"
+  [file lines]
   (->>
    (d/q '[:find ?e ?name
-          :in $ % ?first ?last
+          :in $ % ?file ?first ?last
           :where
           [?e :tags ?tag]
           [?tag :name ?name]
-          (lines ?e ?first ?last)]
-        rules (first lines) (last lines))
+          (lines ?e ?file ?first ?last)]
+        rules file (first lines) (last lines))
    (group-by first)
    (map (fn [[id tag-tuples]]
           (assoc (d/entity id)
             :tags (set (map second tag-tuples)))))))
 
 (defn attr-counts
-  [lines attr]
+  [file lines attr]
   (sort-by (comp - second)
            (d/q '[:find ?type (count ?e)
-                  :in $ % ?first ?last ?attr
+                  :in $ % ?file ?first ?last ?attr
                   :where
                   [?e ?attr ?type]
-                  (lines ?e ?first ?last)]
-                rules (first lines) (last lines) attr)))
+                  (lines ?e ?file ?first ?last)]
+                rules file (first lines) (last lines) attr)))
 
 (defn tag-counts
-  [lines]
+  [file lines]
   (->>
    (d/q '[:find ?type ?tag (count ?e)
-          :in $ % ?first ?last
+          :in $ % ?file ?first ?last
           :where
           [?e :tags ?t]
           [?t :type ?type]
           [?t :name ?tag]
-          (lines ?e ?first ?last)]
-        rules
-        (first lines)
-        (last lines))
+          (lines ?e ?file ?first ?last)]
+        rules file (first lines) (last lines))
    (group-by first)
    vals
    (mapcat identity)

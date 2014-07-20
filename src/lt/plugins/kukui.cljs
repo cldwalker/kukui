@@ -28,34 +28,35 @@
 
 (defn db->nodes
   ([ed] (db->nodes ed (current-lines ed)))
-  ([ed lines] (db/->nodes lines)))
+  ([ed lines] (db/->nodes (util/current-file) lines)))
 
 (cmd/command {:command :kukui.db-tag-counts
               :desc "kukui: db tag counts in current branch's nodes"
               :exec (fn []
                       (let [ed (pool/last-active)]
-                        (prn (->> (db->nodes ed nil)
+                        (prn (->> (db->nodes ed)
                                   (mapcat :tags)
                                   frequencies))))})
 
-(defn db-types-counts [lines]
-  (let [nodes (db/->nodes lines)]
+
+(defn db-types-counts [file lines]
+  (let [nodes (db/->nodes file lines)]
     (println "Tag counts")
-    (util/pprint (db/tag-counts lines))
+    (util/pprint (db/tag-counts file lines))
     (println "Tag counts by type")
     (prn (map (fn [[type tag-map]]
-                [type (apply + (vals tag-map))])
-              (db/tag-counts lines)))
+                 [type (apply + (vals tag-map))])
+               (db/tag-counts file lines)))
     (prn "Misc counts" {:untagged (count (filter (comp empty? :tags) nodes))
                         :nodes (count nodes)})
     (println "Type counts")
-    (util/pprint (db/attr-counts lines :type))))
+    (util/pprint (db/attr-counts file lines :type))))
 
 (cmd/command {:command :kukui.db-types-counts
               :desc "kukui: db tag counts of each type for current branch or selection"
               :exec (fn []
                       (let [ed (pool/last-active)]
-                        (db-types-counts (current-lines ed))))})
+                        (db-types-counts (util/current-file) (current-lines ed))))})
 
 (cmd/command {:command :kukui.db-all-types-counts
               :desc "kukui: Same as types-counts but for whole file"
@@ -63,7 +64,7 @@
                       (let [ed (pool/last-active)
                             lines (range (editor/first-line ed)
                                          (inc (editor/last-line ed)))]
-                        (db-types-counts lines)))})
+                        (db-types-counts (util/current-file) lines)))})
 
 (cmd/command {:command :kukui.debug-nodes
               :desc "kukui: prints nodes for current branch or selection"
@@ -73,7 +74,7 @@
 (cmd/command {:command :kukui.debug-db-nodes
               :desc "kukui: prints db nodes for current branch or selection"
               :exec (fn []
-                      (util/pprint (db->nodes (pool/last-active) nil)))})
+                      (util/pprint (db->nodes (pool/last-active))))})
 
 ;; Type view commands
 ;; ==================

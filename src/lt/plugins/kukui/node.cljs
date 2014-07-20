@@ -6,7 +6,8 @@
 (defn line->node [ed line]
   {:line line
    :indent (c/line-indent ed line)
-   :text (editor/line ed line)})
+   :text (editor/line ed line)
+   :file (get-in @ed [:info :path])})
 
 (def ignore-tag "ignore")
 
