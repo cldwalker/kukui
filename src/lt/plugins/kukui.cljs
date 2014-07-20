@@ -54,19 +54,35 @@
     (println "Type counts")
     (util/pprint (db/attr-counts file lines :type))))
 
+(defn all-db-types-counts []
+  (println "Tag counts")
+  (util/pprint (map (fn [[f v]] [f (util/->val-sorted-map v)])
+                    (db/all-tag-counts)))
+  (println "Tag counts by type")
+  (prn (sort-by second >
+                (map (fn [[type tag-map]]
+                       [type (apply + (vals tag-map))])
+                     (db/all-tag-counts))))
+  (println "Type counts")
+  (util/pprint (db/all-attr-counts :type)))
+
 (cmd/command {:command :kukui.db-types-counts
               :desc "kukui: db tag counts of each type for current branch or selection"
               :exec (fn []
                       (let [ed (pool/last-active)]
                         (db-types-counts (util/current-file) (current-lines ed))))})
 
-(cmd/command {:command :kukui.db-all-types-counts
+(cmd/command {:command :kukui.db-file-types-counts
               :desc "kukui: Same as types-counts but for whole file"
               :exec (fn []
                       (let [ed (pool/last-active)
                             lines (range (editor/first-line ed)
                                          (inc (editor/last-line ed)))]
                         (db-types-counts (util/current-file) lines)))})
+
+(cmd/command {:command :kukui.db-all-types-counts
+              :desc "kukui: Same as types-counts but for all files"
+              :exec all-db-types-counts})
 
 (cmd/command {:command :kukui.debug-nodes
               :desc "kukui: prints nodes for current branch or selection"

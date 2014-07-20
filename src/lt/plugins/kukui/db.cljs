@@ -31,7 +31,7 @@
          file line)))
 
 (defn ->nodes
-  "Returns nodes with :tags for given file and range of lines"
+  "Returns nodes with :tags for a given file range"
   [file lines]
   (->>
    (d/q '[:find ?e ?name
@@ -47,18 +47,39 @@
             :tags (set (map second tag-tuples)))))))
 
 (defn attr-counts
+  "Returns pairs of attribute vals and their counts for a given file range"
   [file lines attr]
-  (sort-by (comp - second)
-           (d/q '[:find ?type (count ?e)
+  (sort-by second >
+           (d/q '[:find ?val (count ?e)
                   :in $ % ?file ?first ?last ?attr
                   :where
-                  [?e ?attr ?type]
+                  [?e ?attr ?val]
                   (lines ?e ?file ?first ?last)]
                 rules file (first lines) (last lines) attr)))
 
+(defn all-attr-counts
+  [attr]
+  (sort-by second >
+           (d/q '[:find ?val (count ?e)
+                  :in $ ?attr
+                  :where
+                  [?e ?attr ?val]]
+                attr)))
+
+(defn ->tag-counts
+  [results]
+  (->> results
+       (group-by first)
+       vals
+       (mapcat identity)
+       (reduce
+        #(assoc-in %1 (butlast %2) (last %2))
+        {})))
+
 (defn tag-counts
+  "Returns a nested map of tag names and counts by tag type"
   [file lines]
-  (->>
+  (->tag-counts
    (d/q '[:find ?type ?tag (count ?e)
           :in $ % ?file ?first ?last
           :where
@@ -66,13 +87,16 @@
           [?t :type ?type]
           [?t :name ?tag]
           (lines ?e ?file ?first ?last)]
-        rules file (first lines) (last lines))
-   (group-by first)
-   vals
-   (mapcat identity)
-   (reduce
-    #(assoc-in %1 (butlast %2) (last %2))
-    {})))
+        rules file (first lines) (last lines))))
+
+(defn all-tag-counts
+  []
+  (->tag-counts
+   (d/q '[:find ?type ?tag (count ?e)
+          :where
+          [?e :tags ?t]
+          [?t :type ?type]
+          [?t :name ?tag]])))
 
 (defn types-and-names
   "Returns a list of types with each type having entity names of that type"
