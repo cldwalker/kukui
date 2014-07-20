@@ -42,11 +42,13 @@
 (defn db-types-counts [file lines]
   (let [nodes (db/->nodes file lines)]
     (println "Tag counts")
-    (util/pprint (db/tag-counts file lines))
+    (util/pprint (map (fn [[f v]] [f (util/->val-sorted-map v)])
+                      (db/tag-counts file lines)))
     (println "Tag counts by type")
-    (prn (map (fn [[type tag-map]]
+    (prn (sort-by second >
+          (map (fn [[type tag-map]]
                  [type (apply + (vals tag-map))])
-               (db/tag-counts file lines)))
+               (db/tag-counts file lines))))
     (prn "Misc counts" {:untagged (count (filter (comp empty? :tags) nodes))
                         :nodes (count nodes)})
     (println "Type counts")
