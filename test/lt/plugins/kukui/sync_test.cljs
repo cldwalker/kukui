@@ -12,16 +12,16 @@
 
 (def default-file "/some/path")
 
-(defn ->nodes [nodes]
+(defn ->nodes [nodes file]
   (->> nodes
        kc/add-attributes-to-nodes
        (mapv
-        #(merge {:file default-file}
-                %
-                {:indent (count (re-find #"^\s*" (:text %)))}))))
+        #(assoc %
+           :file file
+           :indent (count (re-find #"^\s*" (:text %)))))))
 
 (defn sync [nodes]
-  (sync/sync (->nodes nodes) default-file))
+  (sync/sync (->nodes nodes default-file) default-file))
 
 ;; Add
 (deftest add-on-first-edit
@@ -104,11 +104,25 @@
     (is (= "person"
            (:type (d/entity (:db/id existing)))))))
 
+(deftest update-same-line-when-multiple-files
+  (sync [{:text "file 1 #type:td" :line 0}])
+  (sync/sync (->nodes [{:text "file 2 #type:td" :line 0}] "/another/path") "/another/path")
+  (sync [{:text "pre file 1 #type:td" :line 0}
+         {:text "file 1 #type:td" :line 1}])
+  (is (=
+       #{["/another/path" 0 "file 2 #type:td"]
+         ["/some/path" 1 "file 1 #type:td"]
+         ["/some/path" 0 "pre file 1 #type:td"]}
+       (d/q '[:find ?file ?line ?text
+              :where
+              [?e :file ?file]
+              [?e :text ?text]
+              [?e :line ?line]]))))
+
 (comment
   (sync/reset-sync!)
 
   (sync/sync [{:text "whoop" :type "td"}] "/ok/path")
-  (d/entity 5)
   (d/qe '[:find ?e
           :where [?e]])
   (-> @sync/last-edits vals first)

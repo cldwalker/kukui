@@ -40,9 +40,13 @@
          (map #(hash-map :name % :type db/root-type))
          (into entities))))
 
-(defn add-ids-by-line [nodes]
+(defn add-ids-by-line [file nodes]
   (let [line-entities (into {} (d/q '[:find ?l ?e
-                                      :where [?e :line ?l]]))]
+                                      :in $ ?file
+                                      :where
+                                      [?e :line ?l]
+                                      [?e :file ?file]]
+                                    file))]
     (map #(if (:db/id %) %
             (assoc % :db/id (get line-entities (:line %))))
          nodes)))
@@ -83,15 +87,15 @@
      changes
      nodes2)))
 
-(defn node-diff [nodes1 nodes2]
+(defn node-diff [file nodes1 nodes2]
   (-> (node-diff* nodes1 nodes2)
-      (update-in [:updated] add-ids-by-line)
+      (update-in [:updated] (partial add-ids-by-line file))
       (update-in [:updated] (fn [nodes]
                               (map #(if (:new-line %)
                                       {:db/id (:db/id %) :line (:new-line %)}
                                       %)
                                    nodes)))
-      (update-in [:deleted] add-ids-by-line)))
+      (update-in [:deleted] (partial add-ids-by-line file))))
 
 (defn ->new-entities [nodes]
   (->> nodes
@@ -114,8 +118,8 @@
   (atom {}))
 
 (defn sync-entities [nodes file]
-  (let [{:keys [added deleted updated]} (node-diff (-> @last-edits (get file) last)
-                                                   nodes)]
+  (let [last-nodes (-> @last-edits (get file) last)
+        {:keys [added deleted updated]} (node-diff file last-nodes nodes)]
     {:added (->new-entities added)
      :updated (must-have-ids updated)
      :deleted (->> deleted
