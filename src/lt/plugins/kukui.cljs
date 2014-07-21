@@ -30,15 +30,6 @@
   ([ed] (db->nodes ed (current-lines ed)))
   ([ed lines] (db/->nodes (util/current-file) lines)))
 
-(cmd/command {:command :kukui.db-tag-counts
-              :desc "kukui: db tag counts in current branch's nodes"
-              :exec (fn []
-                      (let [ed (pool/last-active)]
-                        (prn (->> (db->nodes ed)
-                                  (mapcat :tags)
-                                  frequencies))))})
-
-
 (defn db-types-counts [file lines]
   (let [nodes (db/->nodes file lines)]
     (println "Tag counts")
