@@ -4,18 +4,40 @@
             [lt.objs.command :as cmd]
             [lt.objs.files :as files]
             [cljs.reader :as reader]
+            [clojure.string :as s]
             [lt.plugins.kukui.core :as kc]
             [lt.plugins.kukui.datascript :as d]
+            [datascript :as ds]
             [lt.plugins.kukui.db :as db]
             [lt.plugins.kukui.util :as util]))
 
-(defn query->nodes [query]
-  (let [nodes (d/qe query db/rules)]
+(defn ent-text [ent]
+  (or (:text ent)
+      (pr-str (dissoc ent :db/id))))
+
+(defn find-one-query->nodes [query]
+  (let [ents (d/qe query db/rules)]
     (into [{:text (str query) :level 1}]
-          (map #(hash-map :level 2
-                          :text (or (:text %)
-                                    (pr-str (dissoc % :db/id))))
-               nodes))))
+          (map #(hash-map :level 2 :text (ent-text %))
+               ents))))
+
+(defn find-two-query->nodes [query]
+  (let [results (->> (d/qae query db/rules)
+                     (group-by first)
+                     (map (fn [[k pairs]] [k (map second pairs)])))]
+    (into [{:text (str query) :level 1}]
+          (mapcat (fn [[group-key ents]]
+                    (into [{:text group-key :level 2}]
+                          (map #(hash-map :level 3 :text (ent-text %)) ents)))
+                  results))))
+
+(defn query->nodes [query]
+  (println "Query:" query)
+  (let [finds (count (:find (ds/parse-query query)))]
+    (case finds
+      1 (find-one-query->nodes query)
+      2 (find-two-query->nodes query)
+      (throw (ex-info (str "No render found for " finds " finds") {})))))
 
 (cmd/command {:command :kukui.db-query-temp-file
               :desc "kukui: Open db query in temp file"
@@ -23,7 +45,7 @@
                       (let [ed (pool/last-active)
                             line (editor/line ed (.-line (editor/cursor ed)))
                             ;; query '[:find ?e :in $ % :where (tagged-with ?e "work")]
-                            query-string (if (.startsWith line "[:find") line
+                            query-string (if (re-find #"^\s*\[:find" line) (s/triml line)
                                            (str "[:find ?e :in $ % :where " line "]"))
                             query (reader/read-string query-string)
                             nodes (query->nodes query)

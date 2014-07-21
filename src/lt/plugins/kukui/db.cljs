@@ -225,19 +225,10 @@
                    [?e :type ?type]
                    [?t :name ?tag]]))
 
-  ;; find-tagged
-  (d/qe '[:find ?e
-        :in $ ?tag
-        :where
-        [?e :tags ?t]
-        [?t :name ?tag]]
-      "cljs")
 
   ;; delete attr
   (d/transact! [:db/retract 2 :tags 4])
   ;; update
   (d/transact! [{:db/id 128 :type "plang"}])
   ;; delete
-  (d/transact! [[:db.fn/retractEntity 2]])
-
-  )
+  (d/transact! [[:db.fn/retractEntity 2]]))

@@ -32,6 +32,17 @@
   (map #(entity (first %))
        (apply q query args)))
 
+(defn qae
+  "Expands entities for :find symbols that start with ?e"
+  [query & args]
+  (let [fns (map #(if (.startsWith (str %) "?e")
+                    entity identity)
+                 (:find (d/parse-query query)))]
+    (map
+     (fn [result]
+       (mapv #(%1 %2) fns result))
+     (apply q query args))))
+
 (defn find-by
   "Returns entity maps for given attr and value"
   [attr value]
