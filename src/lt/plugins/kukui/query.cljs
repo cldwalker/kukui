@@ -15,11 +15,15 @@
   (or (:text ent)
       (pr-str (dissoc ent :db/id))))
 
+(defn ent->nodes [ent level]
+  (into [{:level level :text (ent-text ent)}]
+        (map #(hash-map :level (inc level) :text (ent-text %))
+             (:desc ent))))
+
 (defn find-one-query->nodes [query]
   (let [ents (d/qe query db/rules)]
     (into [{:text (str query) :level 1}]
-          (map #(hash-map :level 2 :text (ent-text %))
-               ents))))
+          (mapcat #(ent->nodes % 2) ents))))
 
 (defn find-two-query->nodes [query]
   (let [results (->> (d/qae query db/rules)
@@ -28,7 +32,7 @@
     (into [{:text (str query) :level 1}]
           (mapcat (fn [[group-key ents]]
                     (into [{:text group-key :level 2}]
-                          (map #(hash-map :level 3 :text (ent-text %)) ents)))
+                          (mapcat #(ent->nodes % 3) ents)))
                   results))))
 
 (defn query->nodes [query]

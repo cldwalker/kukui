@@ -3365,42 +3365,45 @@ lt.plugins.kukui.query.ent_text = (function ent_text(ent){var or__6428__auto__ =
 {return cljs.core.pr_str.call(null,cljs.core.dissoc.call(null,ent,new cljs.core.Keyword("db","id","db/id",1014111942)));
 }
 });
-lt.plugins.kukui.query.find_one_query__GT_nodes = (function find_one_query__GT_nodes(query){var ents = lt.plugins.kukui.datascript.qe.call(null,query,lt.plugins.kukui.db.rules);return cljs.core.into.call(null,new cljs.core.PersistentVector(null, 1, 5, cljs.core.PersistentVector.EMPTY_NODE, [new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"text","text",1017460895),(''+cljs.core.str.cljs$core$IFn$_invoke$arity$1(query)),new cljs.core.Keyword(null,"level","level",1116770038),1], null)], null),cljs.core.map.call(null,((function (ents){
-return (function (p1__9408_SHARP_){return cljs.core.PersistentHashMap.fromArrays.call(null,[new cljs.core.Keyword(null,"level","level",1116770038),new cljs.core.Keyword(null,"text","text",1017460895)],[2,lt.plugins.kukui.query.ent_text.call(null,p1__9408_SHARP_)]);
+lt.plugins.kukui.query.ent__GT_nodes = (function ent__GT_nodes(ent,level){return cljs.core.into.call(null,new cljs.core.PersistentVector(null, 1, 5, cljs.core.PersistentVector.EMPTY_NODE, [new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"level","level",1116770038),level,new cljs.core.Keyword(null,"text","text",1017460895),lt.plugins.kukui.query.ent_text.call(null,ent)], null)], null),cljs.core.map.call(null,(function (p1__9638_SHARP_){return cljs.core.PersistentHashMap.fromArrays.call(null,[new cljs.core.Keyword(null,"level","level",1116770038),new cljs.core.Keyword(null,"text","text",1017460895)],[(level + 1),lt.plugins.kukui.query.ent_text.call(null,p1__9638_SHARP_)]);
+}),new cljs.core.Keyword(null,"desc","desc",1016984067).cljs$core$IFn$_invoke$arity$1(ent)));
+});
+lt.plugins.kukui.query.find_one_query__GT_nodes = (function find_one_query__GT_nodes(query){var ents = lt.plugins.kukui.datascript.qe.call(null,query,lt.plugins.kukui.db.rules);return cljs.core.into.call(null,new cljs.core.PersistentVector(null, 1, 5, cljs.core.PersistentVector.EMPTY_NODE, [new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"text","text",1017460895),(''+cljs.core.str.cljs$core$IFn$_invoke$arity$1(query)),new cljs.core.Keyword(null,"level","level",1116770038),1], null)], null),cljs.core.mapcat.call(null,((function (ents){
+return (function (p1__9639_SHARP_){return lt.plugins.kukui.query.ent__GT_nodes.call(null,p1__9639_SHARP_,2);
 });})(ents))
 ,ents));
 });
-lt.plugins.kukui.query.find_two_query__GT_nodes = (function find_two_query__GT_nodes(query){var results = cljs.core.map.call(null,(function (p__9414){var vec__9415 = p__9414;var k = cljs.core.nth.call(null,vec__9415,0,null);var pairs = cljs.core.nth.call(null,vec__9415,1,null);return new cljs.core.PersistentVector(null, 2, 5, cljs.core.PersistentVector.EMPTY_NODE, [k,cljs.core.map.call(null,cljs.core.second,pairs)], null);
+lt.plugins.kukui.query.find_two_query__GT_nodes = (function find_two_query__GT_nodes(query){var results = cljs.core.map.call(null,(function (p__9645){var vec__9646 = p__9645;var k = cljs.core.nth.call(null,vec__9646,0,null);var pairs = cljs.core.nth.call(null,vec__9646,1,null);return new cljs.core.PersistentVector(null, 2, 5, cljs.core.PersistentVector.EMPTY_NODE, [k,cljs.core.map.call(null,cljs.core.second,pairs)], null);
 }),cljs.core.group_by.call(null,cljs.core.first,lt.plugins.kukui.datascript.qae.call(null,query,lt.plugins.kukui.db.rules)));return cljs.core.into.call(null,new cljs.core.PersistentVector(null, 1, 5, cljs.core.PersistentVector.EMPTY_NODE, [new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"text","text",1017460895),(''+cljs.core.str.cljs$core$IFn$_invoke$arity$1(query)),new cljs.core.Keyword(null,"level","level",1116770038),1], null)], null),cljs.core.mapcat.call(null,((function (results){
-return (function (p__9416){var vec__9417 = p__9416;var group_key = cljs.core.nth.call(null,vec__9417,0,null);var ents = cljs.core.nth.call(null,vec__9417,1,null);return cljs.core.into.call(null,new cljs.core.PersistentVector(null, 1, 5, cljs.core.PersistentVector.EMPTY_NODE, [new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"text","text",1017460895),group_key,new cljs.core.Keyword(null,"level","level",1116770038),2], null)], null),cljs.core.map.call(null,((function (vec__9417,group_key,ents,results){
-return (function (p1__9409_SHARP_){return cljs.core.PersistentHashMap.fromArrays.call(null,[new cljs.core.Keyword(null,"level","level",1116770038),new cljs.core.Keyword(null,"text","text",1017460895)],[3,lt.plugins.kukui.query.ent_text.call(null,p1__9409_SHARP_)]);
-});})(vec__9417,group_key,ents,results))
+return (function (p__9647){var vec__9648 = p__9647;var group_key = cljs.core.nth.call(null,vec__9648,0,null);var ents = cljs.core.nth.call(null,vec__9648,1,null);return cljs.core.into.call(null,new cljs.core.PersistentVector(null, 1, 5, cljs.core.PersistentVector.EMPTY_NODE, [new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"text","text",1017460895),group_key,new cljs.core.Keyword(null,"level","level",1116770038),2], null)], null),cljs.core.mapcat.call(null,((function (vec__9648,group_key,ents,results){
+return (function (p1__9640_SHARP_){return lt.plugins.kukui.query.ent__GT_nodes.call(null,p1__9640_SHARP_,3);
+});})(vec__9648,group_key,ents,results))
 ,ents));
 });})(results))
 ,results));
 });
 lt.plugins.kukui.query.query__GT_nodes = (function query__GT_nodes(query){cljs.core.println.call(null,"Query:",query);
-var finds = cljs.core.count.call(null,new cljs.core.Keyword(null,"find","find",1017047339).cljs$core$IFn$_invoke$arity$1(datascript.parse_query.call(null,query)));var G__9419 = finds;var caseval__9422;
-switch (G__9419){
+var finds = cljs.core.count.call(null,new cljs.core.Keyword(null,"find","find",1017047339).cljs$core$IFn$_invoke$arity$1(datascript.parse_query.call(null,query)));var G__9650 = finds;var caseval__9653;
+switch (G__9650){
 case 1:
-caseval__9422=lt.plugins.kukui.query.find_one_query__GT_nodes.call(null,query)
+caseval__9653=lt.plugins.kukui.query.find_one_query__GT_nodes.call(null,query)
 break;
 case 2:
-caseval__9422=lt.plugins.kukui.query.find_two_query__GT_nodes.call(null,query)
+caseval__9653=lt.plugins.kukui.query.find_two_query__GT_nodes.call(null,query)
 break;
 default:
-caseval__9422=(function(){throw cljs.core.ex_info.call(null,("No render found for "+cljs.core.str.cljs$core$IFn$_invoke$arity$1(finds)+" finds"),cljs.core.PersistentArrayMap.EMPTY)})()
+caseval__9653=(function(){throw cljs.core.ex_info.call(null,("No render found for "+cljs.core.str.cljs$core$IFn$_invoke$arity$1(finds)+" finds"),cljs.core.PersistentArrayMap.EMPTY)})()
 }
-return caseval__9422;
+return caseval__9653;
 });
 lt.objs.command.command.call(null,new cljs.core.PersistentArrayMap(null, 3, [new cljs.core.Keyword(null,"command","command",1964298941),new cljs.core.Keyword(null,"kukui.db-query-temp-file","kukui.db-query-temp-file",3940708652),new cljs.core.Keyword(null,"desc","desc",1016984067),"kukui: Open db query in temp file",new cljs.core.Keyword(null,"exec","exec",1017031683),(function (){var ed = lt.objs.editor.pool.last_active.call(null);var line = lt.objs.editor.line.call(null,ed,lt.objs.editor.cursor.call(null,ed).line);var query_string = (cljs.core.truth_(cljs.core.re_find.call(null,/^\s*\[:find/,line))?clojure.string.triml.call(null,line):("[:find ?e :in $ % :where "+cljs.core.str.cljs$core$IFn$_invoke$arity$1(line)+"]"));var query = cljs.reader.read_string.call(null,query_string);var nodes = lt.plugins.kukui.query.query__GT_nodes.call(null,query);var result = lt.plugins.kukui.core.tree__GT_string.call(null,nodes,lt.objs.editor.option.call(null,ed,"tabSize"));var path = lt.plugins.kukui.util.tempfile.call(null,"kukui-query",".otl");lt.objs.files.save.call(null,path,result);
 return lt.objs.command.exec_BANG_.call(null,new cljs.core.Keyword(null,"open-path","open-path",2513940794),path);
 })], null));
 lt.objs.command.command.call(null,new cljs.core.PersistentArrayMap(null, 3, [new cljs.core.Keyword(null,"command","command",1964298941),new cljs.core.Keyword(null,"kukui.query-with-datascript","kukui.query-with-datascript",1006556720),new cljs.core.Keyword(null,"desc","desc",1016984067),"kukui: Execute a datascript query",new cljs.core.Keyword(null,"exec","exec",1017031683),(function (){var ed = lt.objs.editor.pool.last_active.call(null);var line = lt.objs.editor.line.call(null,ed,lt.objs.editor.cursor.call(null,ed).line);var query = cljs.reader.read_string.call(null,line);var result = lt.plugins.kukui.datascript.q.call(null,query);var result__$1 = ((cljs.core.every_QMARK_.call(null,((function (ed,line,query,result){
-return (function (p1__9420_SHARP_){return (cljs.core._EQ_.call(null,1,cljs.core.count.call(null,p1__9420_SHARP_))) && (cljs.core.integer_QMARK_.call(null,cljs.core.first.call(null,p1__9420_SHARP_)));
+return (function (p1__9651_SHARP_){return (cljs.core._EQ_.call(null,1,cljs.core.count.call(null,p1__9651_SHARP_))) && (cljs.core.integer_QMARK_.call(null,cljs.core.first.call(null,p1__9651_SHARP_)));
 });})(ed,line,query,result))
 ,result))?cljs.core.map.call(null,((function (ed,line,query,result){
-return (function (p1__9421_SHARP_){return lt.plugins.kukui.datascript.entity.call(null,cljs.core.first.call(null,p1__9421_SHARP_));
+return (function (p1__9652_SHARP_){return lt.plugins.kukui.datascript.entity.call(null,cljs.core.first.call(null,p1__9652_SHARP_));
 });})(ed,line,query,result))
 ,result):result);return lt.plugins.kukui.util.pprint.call(null,result__$1);
 })], null));
