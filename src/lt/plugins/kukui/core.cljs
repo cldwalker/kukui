@@ -150,3 +150,19 @@
         {:tags #{} :nodes []})
        :nodes
        (mapv add-custom-attributes)))
+
+(defn tree->string
+  "Converts a tree of nodes to an outline. Nodes are expected to have :text and :level keys.
+  :level is translated to whitespace based on indent. Example nodes:
+
+  [{:text 'parent' :level 1} {:text 'parent2' :level 2}] "
+  [nodes indent]
+  (s/join
+   "\n"
+   (reduce
+    (fn [accum node]
+      (conj accum
+            (str (apply str (repeat (* indent (dec (:level node))) " "))
+                 (s/triml (:text node)))))
+    []
+    nodes)))

@@ -75,3 +75,12 @@
        (= [(assoc (nth nodes 1) :name "kukui" :type "proj" :tags #{"cljs" "LT"})
            (assoc (nth nodes 2) :type "note" :tags #{"cljs" "kukui"})]
           (k/add-attributes-to-nodes nodes))))))
+
+(deftest tree->string
+  (is
+   (= "parent\n  child\nsibling"
+      (k/tree->string [{:level 1 :text "parent"}
+                       {:level 2 :text "child"}
+                       {:level 1 :text "sibling"}]
+                      2)))
+  )

@@ -21,12 +21,19 @@
     ;; Allow untagged entities to match
     [(tag-names ?e ?name)]])
 
+(def tagged-with-rule
+  '[[(tagged-with ?e ?name)
+     [?e :tags ?tag]
+     [?tag :name ?name]]])
+
 (def rules
   (concat lines-rule
-          tag-names-rule))
+          tag-names-rule
+          tagged-with-rule))
 
 ;; Queries
 ;; =======
+
 (defn name-id-map []
   (into {} (d/q '[:find ?n ?e
                    :where [?e :name ?n]])))
