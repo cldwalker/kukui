@@ -8,12 +8,22 @@
 ;; Rules
 ;; =====
 
-(def lines-rule '[[(lines ?e ?file ?first-line ?last-line)
-                   [?e :file ?file]
-                   [?e :line ?line]
-                   [(<= ?first-line ?line ?last-line)]]])
+(def lines-rule
+  '[[(lines ?e ?file ?first-line ?last-line)
+     [?e :file ?file]
+     [?e :line ?line]
+     [(<= ?first-line ?line ?last-line)]]])
+
+(def tag-names-rule
+  '[[(tag-names ?e ?name)
+     [?e :tags ?tag]
+     [?tag :name ?name]]
+    ;; Allow untagged entities to match
+    [(tag-names ?e ?name)]])
+
 (def rules
-  (concat lines-rule))
+  (concat lines-rule
+          tag-names-rule))
 
 ;; Queries
 ;; =======
@@ -30,21 +40,35 @@
            [?e :line ?line]]
          file line)))
 
+(defn ->nodes*
+  [results]
+  (->> results
+       (group-by first)
+       (map (fn [[id tag-tuples]]
+              (assoc (d/entity id)
+                :tags (set (keep second tag-tuples)))))))
+
 (defn ->nodes
-  "Returns nodes with :tags for a given file range"
+  "Returns nodes and their :tags for a given file range"
   [file lines]
-  (->>
+  (->nodes*
    (d/q '[:find ?e ?name
           :in $ % ?file ?first ?last
           :where
-          [?e :tags ?tag]
-          [?tag :name ?name]
+          (tag-names ?e ?name)
           (lines ?e ?file ?first ?last)]
-        rules file (first lines) (last lines))
-   (group-by first)
-   (map (fn [[id tag-tuples]]
-          (assoc (d/entity id)
-            :tags (set (map second tag-tuples)))))))
+        rules file (first lines) (last lines))))
+
+(defn ->all-nodes
+  "Returns all nodes and their :tags"
+  []
+  (->nodes*
+   (d/q '[:find ?e ?name
+          :in $ %
+          :where
+          (tag-names ?e ?name)
+          [?e :file]]
+        rules)))
 
 (defn attr-counts
   "Returns pairs of attribute vals and their counts for a given file range"

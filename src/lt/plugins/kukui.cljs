@@ -40,9 +40,10 @@
           (map (fn [[type tag-map]]
                  [type (apply + (vals tag-map))])
                (db/tag-counts file lines))))
-    (prn "Misc counts" {:untagged (count (filter (comp empty? :tags) nodes))
+    (prn "Misc counts" {:untagged (count (filter #(and (empty? (:name %)) (empty? (:tags %)))
+                                                 nodes))
                         :nodes (count nodes)})
-    (println "Type counts")
+    (println "Node counts by type")
     (util/pprint (db/attr-counts file lines :type))))
 
 (defn all-db-types-counts []
@@ -54,7 +55,11 @@
                 (map (fn [[type tag-map]]
                        [type (apply + (vals tag-map))])
                      (db/all-tag-counts))))
-  (println "Type counts")
+  (let [nodes (db/->all-nodes)]
+    (prn "Misc counts" {:untagged (count (filter #(and (empty? (:name %)) (empty? (:tags %)))
+                                                 nodes))
+                        :nodes (count nodes)}))
+  (println "Node counts by type")
   (util/pprint (db/all-attr-counts :type)))
 
 (cmd/command {:command :kukui.db-types-counts
