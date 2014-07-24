@@ -43,10 +43,10 @@
 
 (def named-queries
   "Named datalog queries - accessible to db-query-temp-file cmd"
-  {'tag1-type2  '[:find ?type ?e
-                  :in $ % ?tag
-                  :where (tagged-with ?e ?tag) [?e :type ?type]]
-   'tag-tds '[:find ?tag-name ?e
+  {'ent-by-type  '[:find ?type ?e
+                   :in $ % ?input-tag
+                   :where (tagged-with ?e ?input-tag) [?e :type ?type]]
+   'ent-tds '[:find ?tag-name ?e
               :in $ % ?input-tag
               :where
               [?e :type "td"]
@@ -57,12 +57,14 @@
                   [?children :type ?type]
                   [?children :name ?name]]
    'tagged-tags  '[:find ?tag1 ?tag2
+                   :in $ %
                    :where
-                   ;; Doesn't work. Bug in datascript?
-                   ;; (tagged-ent-with ?e ?t1 ?tag1) (tagged-ent-with ?t1 ?t2 ?tag2)
-                   [?e :tags ?t1] [?t1 :name ?tag1] [?t1 :tags ?t2] [?t2 :name ?tag2]]
+                   (tagged-ent-with ?e ?t1 ?tag1) (tagged-with ?t1 ?tag2)]
    'named-ents '[:find ?n ?e
-                 :where [?e :name ?n]]})
+                 :where [?e :name ?n]]
+   'ent-by-tags '[:find ?tag ?e
+                  :in $ % ?input-tag
+                  :where (tagged-with ?e ?input-tag) (tagged-with ?e ?tag)]})
 
 (defn name-id-map []
   (into {} (d/q ('named-ents named-queries))))
