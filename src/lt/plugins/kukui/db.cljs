@@ -26,10 +26,16 @@
      [?e :tags ?tag]
      [?tag :name ?name]]])
 
+(def tagged-ent-with-rule
+  '[[(tagged-ent-with ?e ?tag ?tag-name)
+     [?e :tags ?tag]
+     [?tag :name ?tag-name]]])
+
 (def rules
   (concat lines-rule
           tag-names-rule
-          tagged-with-rule))
+          tagged-with-rule
+          tagged-ent-with-rule))
 
 ;; Queries
 ;; =======
@@ -44,16 +50,22 @@
               :in $ % ?input-tag
               :where
               [?e :type "td"]
-              [?e :tags ?tag] [?tag :type "priority"] [?tag :name ?tag-name]
+              (tagged-ent-with ?e ?t1 ?tag-name) [?t1 :type "priority"]
               (tagged-with ?e ?input-tag)]
    'types-names '[:find ?type ?name
                   :where
                   [?children :type ?type]
-                  [?children :name ?name]]})
+                  [?children :name ?name]]
+   'tagged-tags  '[:find ?tag1 ?tag2
+                   :where
+                   ;; Doesn't work. Bug in datascript?
+                   ;; (tagged-ent-with ?e ?t1 ?tag1) (tagged-ent-with ?t1 ?t2 ?tag2)
+                   [?e :tags ?t1] [?t1 :name ?tag1] [?t1 :tags ?t2] [?t2 :name ?tag2]]
+   'named-ents '[:find ?n ?e
+                 :where [?e :name ?n]]})
 
 (defn name-id-map []
-  (into {} (d/q '[:find ?n ?e
-                   :where [?e :name ?n]])))
+  (into {} (d/q ('named-ents named-queries))))
 
 (defn find-by-file-and-line [file line]
   (first
