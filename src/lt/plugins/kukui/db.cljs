@@ -34,6 +34,23 @@
 ;; Queries
 ;; =======
 
+
+(def named-queries
+  "Named datalog queries - accessible to db-query-temp-file cmd"
+  {'tag1-type2  '[:find ?type ?e
+                  :in $ % ?tag
+                  :where (tagged-with ?e ?tag) [?e :type ?type]]
+   'tag-tds '[:find ?tag-name ?e
+              :in $ % ?input-tag
+              :where
+              [?e :type "td"]
+              [?e :tags ?tag] [?tag :type "priority"] [?tag :name ?tag-name]
+              (tagged-with ?e ?input-tag)]
+   'types-names '[:find ?type ?name
+                  :where
+                  [?children :type ?type]
+                  [?children :name ?name]]})
+
 (defn name-id-map []
   (into {} (d/q '[:find ?n ?e
                    :where [?e :name ?n]])))
@@ -132,10 +149,7 @@
 (defn types-and-names
   "Returns a list of types with each type having entity names of that type"
   []
-  (->> (d/q '[:find ?type ?name
-              :where
-              [?children :type ?type]
-              [?children :name ?name]])
+  (->> (d/q ('types-names named-queries))
        (group-by first)
        (map (fn [[type pairs]]
               {:type type :names (map second pairs)}))))

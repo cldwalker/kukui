@@ -16,9 +16,10 @@
       (pr-str (dissoc ent :db/id))))
 
 (defn ent->nodes [ent level]
-  (into [{:level level :text (ent-text ent)}]
+  (let [ent (if (string? ent) {:text ent} ent)]
+    (into [{:level level :text (ent-text ent)}]
         (map #(hash-map :level (inc level) :text (ent-text %))
-             (:desc ent))))
+             (:desc ent)))))
 
 (defn find-one-query->nodes [query args]
   (let [ents (apply d/qe query db/rules args)]
@@ -44,27 +45,23 @@
       2 (find-two-query->nodes query args)
       (throw (ex-info (str "No render found for " finds " finds") {})))))
 
-(def aliased-queries
-  "Aliased queries for use with db-query-temp-file"
-  {'tag1-type2  '[:find ?type ?e
-                  :in $ % ?tag
-                  :where (tagged-with ?e ?tag) [?e :type ?type]]})
-
-(defn unalias-query
-  "If aliased-queries has a matching entry, return it along with args.
+(defn fn-string->query-args
+  "If db/named-queries has a matching entry, return it along with args.
 
   For example:
   (tag1-type2 'kukui') => [:tag1-type2-query 'kukui']"
   [query-string]
-  (let [[alias & args] (reader/read-string query-string)]
-    (when-let [aliased-query (get aliased-queries alias)]
-      (into [aliased-query] args))))
+  (let [[named-query & args] (reader/read-string query-string)]
+    (when-let [query (named-query db/named-queries)]
+      (into [query] args))))
 
 (defn input->query-and-args [input]
-  (let [aliased-query (unalias-query input)]
+  (let [named-query-args (fn-string->query-args input)]
     (cond
-     aliased-query aliased-query
+     named-query-args named-query-args
+     ;; Full query detected
      (re-find #"^\s*\[:find" input) [(reader/read-string input)]
+     ;; If not full-query, assume :where for entity query
      :else [(reader/read-string
              (str "[:find ?e :in $ % :where " input "]"))])))
 
