@@ -43,14 +43,30 @@
       2 (find-two-query->nodes query)
       (throw (ex-info (str "No render found for " finds " finds") {})))))
 
+(def aliased-queries
+  "Aliased queries for use with db-query-temp-file"
+  {'tag1-type2  "[:find ?type ?e :in $ % ?e :where (tagged-with ?e %s) [?e :type ?type]]"})
+
+(defn unalias-query
+  "If aliased-queries has a matching entry, expands query-string to a full query string based
+  on given args.
+
+  For example:
+  (tag1-type2 'kukui') =>
+  [:find ?type ?e :in $ % ?e :where (tagged-with ?e 'kukui') [?e :type ?type]]"
+  [query-string]
+  (let [[alias & args] (reader/read-string query-string)]
+    (when-let [aliased-query (get aliased-queries alias)]
+      (apply util/format aliased-query (map pr-str args)))))
+
 (cmd/command {:command :kukui.db-query-temp-file
               :desc "kukui: Open db query in temp file"
               :exec (fn []
                       (let [ed (pool/last-active)
-                            line (editor/line ed (.-line (editor/cursor ed)))
-                            ;; query '[:find ?e :in $ % :where (tagged-with ?e "work")]
-                            query-string (if (re-find #"^\s*\[:find" line) (s/triml line)
-                                           (str "[:find ?e :in $ % :where " line "]"))
+                            line (s/triml (editor/line ed (.-line (editor/cursor ed))))
+                            query-string (or (unalias-query line)
+                                             (re-find #"^\s*\[:find.*" line)
+                                             (str "[:find ?e :in $ % :where " line "]"))
                             query (reader/read-string query-string)
                             nodes (query->nodes query)
                             result (kc/tree->string nodes (editor/option ed "tabSize"))
