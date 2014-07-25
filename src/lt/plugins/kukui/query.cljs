@@ -45,6 +45,9 @@
       2 (find-two-query->nodes query args)
       (throw (ex-info (str "No render found for " finds " finds") {})))))
 
+;; Use #fn in queries to refer to fns in cljs.core
+(reader/register-tag-parser! 'fn #(aget cljs.core
+                                        (clojure.string/replace (str %) "-" "_")))
 (defn fn-string->query-args
   "If db/named-queries has a matching entry, return it along with args.
 

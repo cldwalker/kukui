@@ -64,7 +64,10 @@
                  :where [?e :name ?n]]
    'ent-by-tags '[:find ?tag ?e
                   :in $ % ?input-tag
-                  :where (tagged-with ?e ?input-tag) (tagged-with ?e ?tag)]})
+                  :where (tagged-with ?e ?input-tag) (tagged-with ?e ?tag)]
+   'search-attr '[:find ?e
+                  :in $ % ?search-fn ?attr ?query
+                  :where [?e ?attr ?val] [(?search-fn ?query ?val)]]})
 
 (defn name-id-map []
   (into {} (d/q ('named-ents named-queries))))
