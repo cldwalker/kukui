@@ -350,7 +350,8 @@
                                            (not (desc-node? (line->node ed %)))
                                            (desc-node? (line->node ed (inc %))))
                                          (current-lines ed))))})
-
+;; DB commands
+;; ===========
 (cmd/command {:command :kukui.sync-file-to-db
               :desc "kukui: Syncs file to db"
               :exec (fn []
@@ -370,6 +371,26 @@
 (cmd/command {:command :kukui.reset-sync
               :desc "kukui: Resets sync"
               :exec sync/reset-sync!})
+
+(def entity-selector
+  (selector/selector {:items (fn []
+                               (sort-by :name
+                                        (d/qe '[:find ?e :where [?e :name]])))
+                      :key :name
+                      :transform #(str "<p>" %3
+                                       (when-not (and (:file %4) (:line %4))
+                                         " (no file)")
+                                       "</p>")}))
+
+(cmd/command {:command :kukui.jump-to-entity
+              :desc "kukui: Jump to an entity's line and file"
+              :options entity-selector
+              :exec (fn [entity]
+                      (if (and (:file entity) (:line entity))
+                        (do (cmd/exec! :open-path (:file entity))
+                            (cmd/exec! :goto-line (inc (:line entity))))
+                        (notifos/set-msg! (str "No file and line exists for " (:name entity))
+                                          {:class "error"})))})
 
 (comment
   (->> entity-records
