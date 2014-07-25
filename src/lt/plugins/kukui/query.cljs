@@ -83,10 +83,5 @@
                      (let [ed (pool/last-active)
                            line (editor/line ed (.-line (editor/cursor ed)))
                            query (reader/read-string line)
-                           result (d/q query)
-                           result (if (every? #(and (= 1 (count %))
-                                                    (integer? (first %)))
-                                              result)
-                                    (map #(d/entity (first %)) result)
-                                    result)]
+                           result (d/qae query)]
                        (util/pprint result)) )})
