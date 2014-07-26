@@ -2,6 +2,8 @@
   (:require [lt.objs.editor :as editor]
             [lt.objs.editor.pool :as pool]
             [lt.objs.files :as files]
+            [lt.objs.tabs :as tabs]
+            [lt.objs.command :as cmd]
             [clojure.string :as s]
             [lt.plugins.sacha.codemirror :as c]))
 
@@ -24,6 +26,15 @@
     (range parent-line (c/safe-next-non-child-line ed parent-line))
     ;; If no parent, assume at top level and search whole file
     (range (editor/first-line ed) (inc (editor/last-line ed)))))
+
+(defn current-lines
+  "Returns range of lines for current selection or current branch"
+  [ed]
+  (if-let [selection (editor/selection-bounds ed)]
+    (range (get-in selection [:from :line])
+           (inc (get-in selection [:to :line])))
+    (let [line (.-line (editor/cursor ed))]
+      (range line (c/safe-next-non-child-line ed line)))))
 
 (defn current-file []
   (-> @(pool/last-active) :info :path))
@@ -71,3 +82,8 @@
        (str (first matches) arg (second matches))))
    fmt
    args))
+
+(defn ensure-and-focus-second-tabset []
+  (when (< (-> @tabs/multi :tabsets count) 2)
+      (cmd/exec! :tabset.new))
+  (cmd/exec! :tabset.next))

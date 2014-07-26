@@ -8,6 +8,7 @@
             [lt.plugins.kukui.core :as kc]
             [lt.plugins.kukui.datascript :as d]
             [datascript :as ds]
+            [lt.plugins.kukui.selector :as selector]
             [lt.plugins.kukui.db :as db]
             [lt.plugins.kukui.util :as util]))
 
@@ -78,6 +79,28 @@
                             result (kc/tree->string nodes (editor/option ed "tabSize"))
                             path (util/tempfile "kukui-query" ".otl")]
                         (files/save path result)
+                        (cmd/exec! :open-path path)))})
+
+(def type-selector
+  (selector/selector {:items (fn []
+                               (sort-by :name
+                                        (map #(select-keys % [:name]) (d/find-by :type db/root-type))))
+                      :key :name}))
+
+(cmd/command {:command :kukui.query-local-for-type
+              :desc "kukui: Opens query over current branch for chosen tag type"
+              :options type-selector
+              :exec (fn [ent]
+                      (let [ed (pool/last-active)
+                            lines (util/current-lines ed)
+                            args [(:name ent) (util/current-file) (first lines) (last lines)]
+                            nodes (find-two-query->nodes
+                                   ('ent-local-for-tag-type db/named-queries)
+                                   args)
+                            result (kc/tree->string nodes (editor/option ed "tabSize"))
+                            path (util/tempfile "kukui-query" ".otl")]
+                        (files/save path result)
+                        (util/ensure-and-focus-second-tabset)
                         (cmd/exec! :open-path path)))})
 
 (cmd/command {:command :kukui.query-with-datascript

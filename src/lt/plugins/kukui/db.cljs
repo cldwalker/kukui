@@ -67,7 +67,17 @@
                   :where (tagged-with ?e ?input-tag) (tagged-with ?e ?tag)]
    'search-attr '[:find ?e
                   :in $ % ?search-fn ?attr ?query
-                  :where [?e ?attr ?val] [(?search-fn ?query ?val)]]})
+                  :where [?e ?attr ?val] [(?search-fn ?query ?val)]]
+   'ent-by-tags-of-type '[:find ?tag-name ?e
+                          :in $ % ?input-tag ?input-type
+                          :where
+                          (tagged-ent-with ?e ?t1 ?tag-name) [?t1 :type ?input-type]
+                          (tagged-with ?e ?input-tag)]
+   'ent-local-for-tag-type '[:find ?tag-name ?e
+                             :in $ % ?input-type ?file ?first ?last
+                             :where
+                             (tagged-ent-with ?e ?t1 ?tag-name) [?t1 :type ?input-type]
+                             (lines ?e ?file ?first ?last)]})
 
 (defn name-id-map []
   (into {} (d/q ('named-ents named-queries))))

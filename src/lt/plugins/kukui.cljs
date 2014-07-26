@@ -20,15 +20,8 @@
             [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 
-(defn current-lines [ed]
-  (if-let [selection (editor/selection-bounds ed)]
-    (range (get-in selection [:from :line])
-           (inc (get-in selection [:to :line])))
-    (let [line (.-line (editor/cursor ed))]
-      (range line (c/safe-next-non-child-line ed line)))))
-
 (defn db->nodes
-  ([ed] (db->nodes ed (current-lines ed)))
+  ([ed] (db->nodes ed (util/current-lines ed)))
   ([ed lines] (db/->nodes (util/current-file) lines)))
 
 (defn db-types-counts [file lines]
@@ -67,7 +60,7 @@
               :desc "kukui: db tag counts of each type for current branch or selection"
               :exec (fn []
                       (let [ed (pool/last-active)]
-                        (db-types-counts (util/current-file) (current-lines ed))))})
+                        (db-types-counts (util/current-file) (util/current-lines ed))))})
 
 (cmd/command {:command :kukui.db-file-types-counts
               :desc "kukui: Same as types-counts but for whole file"
@@ -222,7 +215,7 @@
               :options type-selector
               :exec (fn [type]
                       (let [ed (pool/last-active)
-                            lines (current-lines ed)]
+                            lines (util/current-lines ed)]
                         (check-types-counts
                          ed
                          (fn []
@@ -349,7 +342,7 @@
                                          #(and
                                            (not (desc-node? (line->node ed %)))
                                            (desc-node? (line->node ed (inc %))))
-                                         (current-lines ed))))})
+                                         (util/current-lines ed))))})
 ;; DB commands
 ;; ===========
 (cmd/command {:command :kukui.sync-file-to-db
