@@ -12,6 +12,8 @@
             [lt.plugins.kukui.db :as db]
             [lt.plugins.kukui.util :as util]))
 
+(def leftover-tag "leftover")
+
 (defn ent-text [ent]
   (or (:text ent)
       (pr-str (dissoc ent :db/id))))
@@ -87,6 +89,16 @@
                                         (map #(select-keys % [:name]) (d/find-by :type db/root-type))))
                       :key :name}))
 
+(defn add-leftover-nodes [existing-nodes lines]
+  (let [original-nodes (db/->nodes (util/current-file) lines)
+        existing-text (set (map :text existing-nodes))
+        ;; Assume text is unique enough to detect different nodes in a file range context
+        leftover-nodes (remove #(contains? existing-text (:text %)) original-nodes)]
+    (into existing-nodes
+        (when (seq leftover-nodes)
+          (into [{:level 2 :text leftover-tag}]
+                 (mapcat #(ent->nodes % 3) leftover-nodes))))))
+
 (cmd/command {:command :kukui.query-local-for-type
               :desc "kukui: Opens query over current branch for chosen tag type"
               :options type-selector
@@ -97,6 +109,7 @@
                             nodes (find-two-query->nodes
                                    ('ent-local-for-tag-type db/named-queries)
                                    args)
+                            nodes (add-leftover-nodes nodes lines)
                             result (kc/tree->string nodes (editor/option ed "tabSize"))
                             path (util/tempfile "kukui-query" ".otl")]
                         (files/save path result)
