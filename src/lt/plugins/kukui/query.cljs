@@ -68,7 +68,7 @@
      :else [(reader/read-string
              (str "[:find ?e :in $ % :where " input "]"))])))
 
-(cmd/command {:command :kukui.db-query-temp-file
+(cmd/command {:command :kukui.query-with-named-queries
               :desc "kukui: Open db query in temp file"
               :exec (fn []
                       (let [ed (pool/last-active)
@@ -98,7 +98,7 @@
           (into [{:level 1 :text leftover-tag}]
                  (mapcat #(ent->nodes % 2) leftover-nodes))))))
 
-(cmd/command {:command :kukui.query-local-for-type
+(cmd/command {:command :kukui.query-with-local-type
               :desc "kukui: Opens query over current branch for chosen tag type"
               :options type-selector
               :exec (fn [ent]

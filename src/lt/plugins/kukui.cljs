@@ -21,7 +21,7 @@
   ([ed lines] (sort-by :line
                        (db/->nodes (util/current-file ed) lines))))
 
-(defn db-types-counts [file lines]
+(defn types-counts [file lines]
   (let [nodes (db/->nodes file lines)]
     (println "Tag counts")
     (util/pprint (map (fn [[f v]] [f (util/->val-sorted-map v)])
@@ -37,7 +37,7 @@
     (println "Node counts by type")
     (util/pprint (db/attr-counts file lines :type))))
 
-(defn all-db-types-counts []
+(defn all-types-counts []
   (println "Tag counts")
   (util/pprint (map (fn [[f v]] [f (util/->val-sorted-map v)])
                     (db/all-tag-counts)))
@@ -53,30 +53,30 @@
   (println "Node counts by type")
   (util/pprint (db/all-attr-counts :type)))
 
-(cmd/command {:command :kukui.db-types-counts
+(cmd/command {:command :kukui.types-counts
               :desc "kukui: db tag counts of each type for current branch or selection"
               :exec (fn []
                       (let [ed (pool/last-active)]
-                        (db-types-counts (util/current-file ed) (util/current-lines ed))))})
+                        (types-counts (util/current-file ed) (util/current-lines ed))))})
 
-(cmd/command {:command :kukui.db-file-types-counts
+(cmd/command {:command :kukui.file-types-counts
               :desc "kukui: Same as types-counts but for whole file"
               :exec (fn []
                       (let [ed (pool/last-active)
                             lines (range (editor/first-line ed)
                                          (inc (editor/last-line ed)))]
-                        (db-types-counts (util/current-file ed) lines)))})
+                        (types-counts (util/current-file ed) lines)))})
 
-(cmd/command {:command :kukui.db-all-types-counts
+(cmd/command {:command :kukui.all-types-counts
               :desc "kukui: Same as types-counts but for all files"
-              :exec all-db-types-counts})
+              :exec all-types-counts})
 
-(cmd/command {:command :kukui.debug-nodes
+(cmd/command {:command :kukui.live-debug-nodes
               :desc "kukui: prints nodes for current branch or selection"
               :exec (fn []
                       (util/pprint (node/ed->nodes (pool/last-active))))})
 
-(cmd/command {:command :kukui.debug-db-nodes
+(cmd/command {:command :kukui.debug-nodes
               :desc "kukui: prints db nodes for current branch or selection"
               :exec (fn []
                       (util/pprint (db->nodes (pool/last-active))))})

@@ -1,5 +1,6 @@
 (ns lt.plugins.kukui.live
-  "Commands that depend on live nodes i.e. not db backed"
+  "Commands that depend on live nodes i.e. not db backed. Mostly unused
+  but occasionally used to check db accuracy"
   (:require [lt.plugins.kukui.node :refer [ed->nodes]]
             [lt.objs.command :as cmd]
             [lt.objs.editor.pool :as pool]
@@ -91,7 +92,7 @@
   (doseq [attr (-> (mapcat keys nodes) set (disj :desc :tags :indent :line :text))]
     (attribute-counts* nodes attr)))
 
-(cmd/command {:command :kukui.types-counts
+(cmd/command {:command :kukui.live-types-counts
               :desc "kukui: tag counts of each type for current branch or selection"
               :exec (fn []
                       (let [ed (pool/last-active)
@@ -102,7 +103,7 @@
                                "nodes" (count nodes)))
                         (attribute-counts nodes)))})
 
-(cmd/command {:command :kukui.all-types-counts
+(cmd/command {:command :kukui.live-all-types-counts
               :desc "kukui: Same as types-counts but for whole file"
               :exec (fn []
                       (let [ed (pool/last-active)
