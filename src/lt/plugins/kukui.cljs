@@ -9,7 +9,7 @@
             [lt.plugins.kukui.selector :as selector]
             [lt.plugins.kukui.util :as util]
             [lt.plugins.kukui.core :refer [text->tags tag-prefix indent-nodes desc-node?]]
-            [lt.plugins.kukui.node :refer [ed->nodes line->node]]
+            [lt.plugins.kukui.node :as node]
             [lt.plugins.kukui.sync :as sync]
             [lt.plugins.kukui.db :as db]
             [lt.plugins.kukui.datascript :as d]
@@ -18,7 +18,8 @@
 
 (defn db->nodes
   ([ed] (db->nodes ed (util/current-lines ed)))
-  ([ed lines] (db/->nodes (util/current-file) lines)))
+  ([ed lines] (sort-by :line
+                       (db/->nodes (util/current-file) lines))))
 
 (defn db-types-counts [file lines]
   (let [nodes (db/->nodes file lines)]
@@ -73,7 +74,7 @@
 (cmd/command {:command :kukui.debug-nodes
               :desc "kukui: prints nodes for current branch or selection"
               :exec (fn []
-                      (util/pprint (ed->nodes (pool/last-active))))})
+                      (util/pprint (node/ed->nodes (pool/last-active))))})
 
 (cmd/command {:command :kukui.debug-db-nodes
               :desc "kukui: prints db nodes for current branch or selection"
@@ -110,7 +111,7 @@
   "Stamp children nodes with parent tags"
   [ed]
   (let [level 0
-        nodes (ed->nodes ed)
+        nodes (db->nodes ed)
         parent-tags (text->tags (editor/line ed (.-line (editor/cursor ed))))
         new-nodes (map #(add-tags-to-node % parent-tags) nodes)
         indented-nodes (indent-nodes new-nodes
@@ -131,8 +132,8 @@
                       (let [ed (pool/last-active)]
                         (util/toggle-all ed
                                          #(and
-                                           (not (desc-node? (line->node ed %)))
-                                           (desc-node? (line->node ed (inc %))))
+                                           (not (desc-node? (node/line->node ed %)))
+                                           (desc-node? (node/line->node ed (inc %))))
                                          (util/current-lines ed))))})
 ;; DB commands
 ;; ===========
@@ -142,7 +143,7 @@
                       (let [ed (pool/last-active)
                             lines (range (editor/first-line ed)
                                          (inc (editor/last-line ed)))
-                            nodes (ed->nodes ed lines)
+                            nodes (node/ed->nodes ed lines)
                             file (util/current-file)]
                         (def nodes nodes)
                         (try
