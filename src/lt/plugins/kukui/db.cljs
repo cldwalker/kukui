@@ -2,7 +2,7 @@
   "In-memory DB for nodes, types and things"
   (:require [lt.plugins.kukui.datascript :as d]))
 
-(def unknown-type "unknown")
+(def unknown-type "Default type if none specified" "unknown")
 (def root-type "type")
 
 ;; Rules
@@ -77,7 +77,10 @@
                             :in $ % ?input-type ?file ?first ?last
                             :where
                             (tagged-ent-with ?e ?t1 ?tag-name) [?t1 :type ?input-type]
-                            (lines ?e ?file ?first ?last)]})
+                            (lines ?e ?file ?first ?last)]
+   'or-tags '[:find ?input-tag ?e
+              :in $ % [?input-tag ...]
+              :where (tagged-with ?e ?input-tag)]})
 
 (defn name-id-map []
   (into {} (d/q ('named-ents named-queries))))
@@ -221,10 +224,7 @@
   entities)
 
 (defn must-require-type [entities]
-  (let [invalid (->> entities
-                     (remove #(or (integer? (:tags %))
-                                  (seq (:tags %))))
-                     (remove :type))]
+  (let [invalid (remove :type entities)]
     (when (seq invalid)
       (prn "INVALID" invalid)
       (throw (ex-info (str "Type must be present")

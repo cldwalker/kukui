@@ -64,6 +64,11 @@
   (is (seq (d/last-tx))
       "Last-tx should reflect last actual transaction - not empty one"))
 
+(deftest add-default-type-if-none-given
+  (sync [{:text "What is this?" :line 0}])
+  (is (= db/unknown-type
+         (:type (db/find-by-file-and-line default-file 0)))))
+
 ;; Delete
 (deftest delete-text-line
   (sync [{:text "drink chocolate #type:td" :line 0}])

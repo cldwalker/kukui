@@ -97,13 +97,24 @@
                                    nodes)))
       (update-in [:deleted] (partial add-ids-by-line file))))
 
+(defn ensure-type [entities]
+  (let [[typed untyped] ((juxt filter remove) :type entities)]
+    (concat typed
+            (when (seq untyped)
+              (prn "Untyped" untyped)
+              (map #(assoc % :type db/unknown-type) untyped)))))
+
 (defn ->new-entities [nodes]
-  (->> nodes
-       add-types
-       expand-tags
-       db/must-have-unique-name
-       db/must-have-string-name
-       db/must-require-type))
+  (let [[relationships ents] ((juxt filter remove)
+                              #(or (integer? (:tags %))
+                                   (seq (:tags %)))
+                              (-> nodes add-types expand-tags))]
+    (into (-> ents
+              db/must-have-unique-name
+              db/must-have-string-name
+              ensure-type
+              db/must-require-type)
+          relationships)))
 
 (defn must-have-ids [entities]
   (when-let [invalid-entities (seq (remove :db/id entities))]
