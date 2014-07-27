@@ -26,22 +26,19 @@
 
 (defn find-one-query->nodes [query args]
   (let [ents (apply d/qe query db/rules args)]
-    (into [{:text (str query) :level 1}]
-          (mapcat #(ent->nodes % 2) ents))))
+    (vec (mapcat #(ent->nodes % 1) ents))))
 
 (defn find-two-query->nodes [query args]
   (let [results (->> (apply d/qae query db/rules args)
                      (group-by first)
                      (map (fn [[k pairs]] [k (map second pairs)])))]
-    (into [{:text (str query) :level 1}]
-          (mapcat (fn [[group-key ents]]
-                    (into [{:text group-key :level 2}]
-                          (mapcat #(ent->nodes % 3) ents)))
-                  results))))
+    (vec (mapcat (fn [[group-key ents]]
+              (into [{:text group-key :level 1}]
+                    (mapcat #(ent->nodes % 2) ents)))
+            results))))
 
 (defn query->nodes [query & args]
-  (println "Query:" query)
-  (println "Args:" args)
+  (println "Query:" query "\nArgs:" args)
   (let [finds (count (:find (ds/parse-query query)))]
     (case finds
       1 (find-one-query->nodes query args)
@@ -99,8 +96,8 @@
         leftover-nodes (remove #(contains? existing-text (:text %)) original-nodes)]
     (into existing-nodes
         (when (seq leftover-nodes)
-          (into [{:level 2 :text leftover-tag}]
-                 (mapcat #(ent->nodes % 3) leftover-nodes))))))
+          (into [{:level 1 :text leftover-tag}]
+                 (mapcat #(ent->nodes % 2) leftover-nodes))))))
 
 (cmd/command {:command :kukui.query-local-for-type
               :desc "kukui: Opens query over current branch for chosen tag type"
@@ -108,10 +105,10 @@
               :exec (fn [ent]
                       (let [ed (pool/last-active)
                             lines (util/current-lines ed)
+                            query ('local-by-tags-of-type db/named-queries)
                             args [(:name ent) (util/current-file) (first lines) (last lines)]
-                            nodes (find-two-query->nodes
-                                   ('local-by-tags-of-type db/named-queries)
-                                   args)
+                            _ (println "Query:" query "\nArgs:" args)
+                            nodes (find-two-query->nodes query args)
                             nodes (add-leftover-nodes nodes lines)
                             result (kc/tree->string nodes (editor/option ed "tabSize"))
                             path (util/tempfile "kukui-query" ".otl")]
