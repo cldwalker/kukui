@@ -110,7 +110,7 @@
                             lines (util/current-lines ed)
                             args [(:name ent) (util/current-file) (first lines) (last lines)]
                             nodes (find-two-query->nodes
-                                   ('ent-local-for-tag-type db/named-queries)
+                                   ('local-by-tags-of-type db/named-queries)
                                    args)
                             nodes (add-leftover-nodes nodes lines)
                             result (kc/tree->string nodes (editor/option ed "tabSize"))
