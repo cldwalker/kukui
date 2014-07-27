@@ -141,6 +141,17 @@
                   [?e ?attr ?val]]
                 attr)))
 
+(defn local-tag-types
+  "Returns tag types for a given file range"
+  [file lines]
+  (d/qf '[:find ?type
+          :in $ % ?file ?first ?last
+          :where
+          (lines ?e ?file ?first ?last)
+          [?e :tags ?t]
+          [?t :type ?type]]
+        rules file (first lines) (last lines)))
+
 (defn ->tag-counts
   [results]
   (->> results

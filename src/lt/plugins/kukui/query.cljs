@@ -85,8 +85,11 @@
 
 (def type-selector
   (selector/selector {:items (fn []
-                               (sort-by :name
-                                        (map #(select-keys % [:name]) (d/find-by :type db/root-type))))
+                               (let [ed (pool/last-active)]
+                                 (sort-by :name
+                                          (map #(hash-map :name %)
+                                               (db/local-tag-types (-> @ed :info :path)
+                                                                   (util/current-lines ed))))))
                       :key :name}))
 
 (defn add-leftover-nodes [existing-nodes lines]
