@@ -19,7 +19,7 @@
 (defn db->nodes
   ([ed] (db->nodes ed (util/current-lines ed)))
   ([ed lines] (sort-by :line
-                       (db/->nodes (util/current-file) lines))))
+                       (db/->nodes (util/current-file ed) lines))))
 
 (defn db-types-counts [file lines]
   (let [nodes (db/->nodes file lines)]
@@ -57,7 +57,7 @@
               :desc "kukui: db tag counts of each type for current branch or selection"
               :exec (fn []
                       (let [ed (pool/last-active)]
-                        (db-types-counts (util/current-file) (util/current-lines ed))))})
+                        (db-types-counts (util/current-file ed) (util/current-lines ed))))})
 
 (cmd/command {:command :kukui.db-file-types-counts
               :desc "kukui: Same as types-counts but for whole file"
@@ -65,7 +65,7 @@
                       (let [ed (pool/last-active)
                             lines (range (editor/first-line ed)
                                          (inc (editor/last-line ed)))]
-                        (db-types-counts (util/current-file) lines)))})
+                        (db-types-counts (util/current-file ed) lines)))})
 
 (cmd/command {:command :kukui.db-all-types-counts
               :desc "kukui: Same as types-counts but for all files"
@@ -144,7 +144,7 @@
                             lines (range (editor/first-line ed)
                                          (inc (editor/last-line ed)))
                             nodes (node/ed->nodes ed lines)
-                            file (util/current-file)]
+                            file (util/current-file ed)]
                         (def nodes nodes)
                         (try
                           (sync/sync nodes file)

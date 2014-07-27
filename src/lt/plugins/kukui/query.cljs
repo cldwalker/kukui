@@ -85,13 +85,12 @@
                                (let [ed (pool/last-active)]
                                  (sort-by :name
                                           (map #(hash-map :name %)
-                                               (db/local-tag-types (-> @ed :info :path)
+                                               (db/local-tag-types (util/current-file ed)
                                                                    (util/current-lines ed))))))
                       :key :name}))
 
-(defn add-leftover-nodes [existing-nodes lines]
-  (let [original-nodes (db/->nodes (util/current-file) lines)
-        existing-text (set (map :text existing-nodes))
+(defn add-leftover-nodes [existing-nodes original-nodes]
+  (let [existing-text (set (map :text existing-nodes))
         ;; Assume text is unique enough to detect different nodes in a file range context
         leftover-nodes (remove #(contains? existing-text (:text %)) original-nodes)]
     (into existing-nodes
@@ -106,10 +105,11 @@
                       (let [ed (pool/last-active)
                             lines (util/current-lines ed)
                             query ('local-by-tags-of-type db/named-queries)
-                            args [(:name ent) (util/current-file) (first lines) (last lines)]
+                            args [(:name ent) (util/current-file ed) (first lines) (last lines)]
                             _ (println "Query:" query "\nArgs:" args)
                             nodes (find-two-query->nodes query args)
-                            nodes (add-leftover-nodes nodes lines)
+                            nodes (add-leftover-nodes nodes
+                                                      (db/->nodes (util/current-file ed) lines))
                             result (kc/tree->string nodes (editor/option ed "tabSize"))
                             path (util/tempfile "kukui-query" ".otl")]
                         (files/save path result)

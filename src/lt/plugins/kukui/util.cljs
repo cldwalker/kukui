@@ -36,8 +36,9 @@
     (let [line (.-line (editor/cursor ed))]
       (range line (c/safe-next-non-child-line ed line)))))
 
-(defn current-file []
-  (-> @(pool/last-active) :info :path))
+(defn current-file
+  ([] (current-file (pool/last-active)))
+  ([ed] (get-in @ed [:info :path])))
 
 (defn pprint
   "Useful for printing list or vec of maps. Hack until actual cljs.pprint exists"

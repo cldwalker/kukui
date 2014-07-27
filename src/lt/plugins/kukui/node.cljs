@@ -1,13 +1,14 @@
 (ns lt.plugins.kukui.node
   (:require [lt.plugins.sacha.codemirror :as c]
             [lt.plugins.kukui.core :refer [tag-prefix add-attributes-to-nodes]]
+            [lt.plugins.kukui.util :as util]
             [lt.objs.editor :as editor]))
 
 (defn line->node [ed line]
   {:line line
    :indent (c/line-indent ed line)
    :text (editor/line ed line)
-   :file (get-in @ed [:info :path])})
+   :file (util/current-file ed)})
 
 (def ignore-tag "ignore")
 
