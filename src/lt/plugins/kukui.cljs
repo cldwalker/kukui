@@ -26,8 +26,9 @@
 (defn types-counts [file lines]
   (let [nodes (db/->nodes file lines)]
     (println "Tag counts")
-    (util/pprint (map (fn [[f v]] [f (util/->val-sorted-map v)])
-                      (db/tag-counts file lines)))
+    (util/pprint (sort-by first
+                          (map (fn [[k v]] [k (util/->val-sorted-map v)])
+                               (db/tag-counts file lines))))
     (println "Tag counts by type")
     (prn (sort-by second >
           (map (fn [[type tag-map]]
@@ -41,8 +42,9 @@
 
 (defn all-types-counts []
   (println "Tag counts")
-  (util/pprint (map (fn [[f v]] [f (util/->val-sorted-map v)])
-                    (db/all-tag-counts)))
+  (util/pprint (sort-by first
+                        (map (fn [[k v]] [k (util/->val-sorted-map v)])
+                             (db/all-tag-counts))))
   (println "Tag counts by type")
   (prn (sort-by second >
                 (map (fn [[type tag-map]]
