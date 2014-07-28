@@ -5,6 +5,8 @@
             [lt.objs.editor :as editor]
             [lt.objs.notifos :as notifos]
             [lt.objs.files :as files]
+            [clojure.set :as cset]
+            [cljs.reader :as reader]
             [clojure.string :as s]
             [lt.plugins.kukui.selector :as selector]
             [lt.plugins.kukui.util :as util]
@@ -177,34 +179,46 @@
                         (notifos/set-msg! (str "No file and line exists for " (:name entity))
                                           {:class "error"})))})
 
+(defn ->ent [->id id->name updated-names thing]
+  (cond-> {:db/id (->id (:id thing))
+           :tags (mapv (comp ->id :db/id) (:tags thing))
+           :type (as-> (-> thing :types first :db/id id->name) type
+                       (if (= type "tag") db/unknown-type type))
+           :semtag true}
+          (seq (:desc thing)) (assoc :text (:desc thing))
+          (seq (:url thing)) (assoc :url (:url thing))
+          (let [name (or (:alias thing) (:name thing))]
+            (and (seq name) (not (contains? updated-names name))))
+          (assoc :name (or (:alias thing) (:name thing)))))
+
+(defn import-semtag-data []
+  (let [things (-> (files/home "code/plugins/kukui/db.clj")
+                   files/open-sync
+                   :content
+                   reader/read-string)
+        id->name (into {}
+                       (keep #(when-let [n (or (:alias %) (:name %))]
+                                [(:id %) n]) things))
+        existing-names (db/name-id-map)
+        updated-names (cset/intersection (set (keys existing-names)) (set (vals id->name)))
+        ->id #(if (contains? updated-names (id->name %))
+                (-> % id->name existing-names)
+                %)
+        entities (map (partial ->ent ->id id->name updated-names) things)]
+    (println "Saving" (count entities) "entities," (count (mapcat :tags entities)) "tags...")
+    (-> entities
+        db/must-have-unique-name
+        db/must-have-string-name
+        db/must-require-type
+        d/transact!)))
+
+(cmd/command {:command :kukui.import-semtag-data
+              :desc "kukui: Imports semtag data"
+              :exec import-semtag-data})
+
 (comment
 
-  ;; Semtag import
-  ;; =============
-  (def things (-> (files/home "code/repo/plugins/kukui/db.clj")
-      files/open-sync
-      :content
-      cljs.reader/read-string))
-  (def id->name (into {}
-                      (keep #(when-let [n (or (:alias %) (:name %))]
-                               [(:id %) n]) things)))
-
-  (defn ->ent [thing]
-    (cond-> {:db/id (:id thing)
-             :tags (mapv :db/id (:tags thing))
-             :type (-> thing :types first :db/id id->name)}
-            (seq (:desc thing)) (assoc :text (:desc thing))
-            (seq (:url thing)) (assoc :url (:url thing))
-            (seq (or (:alias thing) (:name thing)))
-              (assoc :name (or (:alias thing) (:name thing)))))
-  (def ents (map ->ent things))
-  (-> ents
-      db/must-have-unique-name
-      db/must-have-string-name
-      db/must-require-type)
-
   (map :name invalid)
-  ;; cleaned up table, db, meta, rest are type updates
   (util/pprint (map #(vector (d/find-first :name (:name %)) %) invalid))
 
   )
