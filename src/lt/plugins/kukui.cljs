@@ -178,7 +178,34 @@
                                           {:class "error"})))})
 
 (comment
-  (->> entity-records
-       first
-       second))
+
+  ;; Semtag import
+  ;; =============
+  (def things (-> (files/home "code/repo/plugins/kukui/db.clj")
+      files/open-sync
+      :content
+      cljs.reader/read-string))
+  (def id->name (into {}
+                      (keep #(when-let [n (or (:alias %) (:name %))]
+                               [(:id %) n]) things)))
+
+  (defn ->ent [thing]
+    (cond-> {:db/id (:id thing)
+             :tags (mapv :db/id (:tags thing))
+             :type (-> thing :types first :db/id id->name)}
+            (seq (:desc thing)) (assoc :text (:desc thing))
+            (seq (:url thing)) (assoc :url (:url thing))
+            (seq (or (:alias thing) (:name thing)))
+              (assoc :name (or (:alias thing) (:name thing)))))
+  (def ents (map ->ent things))
+  (-> ents
+      db/must-have-unique-name
+      db/must-have-string-name
+      db/must-require-type)
+
+  (map :name invalid)
+  ;; cleaned up table, db, meta, rest are type updates
+  (util/pprint (map #(vector (d/find-first :name (:name %)) %) invalid))
+
+  )
 
