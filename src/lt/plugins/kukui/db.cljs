@@ -68,6 +68,9 @@
    'search-attr '[:find ?e
                   :in $ % ?search-fn ?attr ?query
                   :where [?e ?attr ?val] [(?search-fn ?query ?val)]]
+   'search-all-attr '[:find ?e
+                      :in $ % ?search-fn ?query
+                      :where [?e _ ?val] [(?search-fn ?query ?val)]]
    'ent-by-tags-of-type '[:find ?tag-name ?e
                           :in $ % ?input-tag ?input-type
                           :where
