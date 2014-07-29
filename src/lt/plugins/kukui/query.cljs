@@ -4,6 +4,7 @@
             [lt.objs.command :as cmd]
             [lt.objs.files :as files]
             [cljs.reader :as reader]
+            [clojure.set :as cset]
             [clojure.string :as s]
             [lt.plugins.kukui.core :as kc]
             [lt.plugins.kukui.datascript :as d]
@@ -18,11 +19,19 @@
   (or (:text ent)
       (pr-str (dissoc ent :db/id))))
 
+(def hidden-attributes
+  "Attributes to hide when displaying in query results"
+  #{:text :tags :db/id :semtag :indent :file :line :desc})
+
 (defn ent->nodes [ent level]
   (let [ent (if (string? ent) {:text ent} ent)]
     (into [{:level level :text (ent-text ent)}]
-        (map #(hash-map :level (inc level) :text (ent-text %))
-             (:desc ent)))))
+        (into
+         (mapv #(hash-map :level (inc level)
+                         :text (str "+ " % ": " (% ent)))
+          (sort (cset/difference (set (keys ent)) hidden-attributes)))
+         (map #(hash-map :level (inc level) :text (ent-text %))
+             (:desc ent))))))
 
 (defn find-one-query->nodes [query args]
   (let [ents (apply d/qe query db/rules args)]
