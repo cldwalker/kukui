@@ -20,31 +20,41 @@
       (pr-str (dissoc ent :db/id))))
 
 (def hidden-attributes
-  "Attributes to hide when displaying in query results"
-  #{:text :tags :db/id :semtag :indent :file :line :desc})
+  "Entity Attributes to hide in query results"
+  #{:text :db/id :semtag :indent :file :line :desc})
 
-(defn ent->nodes [ent level]
+(defn attr-node [attr ent level id->name]
+  {:level (inc level)
+   :text (str "+ " attr ": "
+              (if (= attr :tags)
+                (->> (attr ent)
+                     (map id->name)
+                     (s/join ", "))
+                (attr ent)))})
+
+(defn ent->nodes [ent level id->name]
   (let [ent (if (string? ent) {:text ent} ent)]
     (into [{:level level :text (ent-text ent)}]
         (into
-         (mapv #(hash-map :level (inc level)
-                         :text (str "+ " % ": " (% ent)))
-          (sort (cset/difference (set (keys ent)) hidden-attributes)))
+         (mapv #(attr-node % ent level id->name)
+               (sort (cset/difference (set (keys ent)) hidden-attributes)))
          (map #(hash-map :level (inc level) :text (ent-text %))
              (:desc ent))))))
 
 (defn find-one-query->nodes [query args]
-  (let [ents (apply d/qe query db/rules args)]
-    (vec (mapcat #(ent->nodes % 1) ents))))
+  (let [ents (apply d/qe query db/rules args)
+        id->name (cset/map-invert (db/name-id-map))]
+    (vec (mapcat #(ent->nodes % 1 id->name) ents))))
 
 (defn find-two-query->nodes [query args]
   (let [results (->> (apply d/qae query db/rules args)
                      (group-by first)
-                     (map (fn [[k pairs]] [k (map second pairs)])))]
+                     (map (fn [[k pairs]] [k (map second pairs)])))
+        id->name (cset/map-invert (db/name-id-map))]
     (vec (mapcat (fn [[group-key ents]]
-              (into [{:text group-key :level 1}]
-                    (mapcat #(ent->nodes % 2) ents)))
-            results))))
+                   (into [{:text group-key :level 1}]
+                         (mapcat #(ent->nodes % 2 id->name) ents)))
+                 results))))
 
 (defn query->nodes [query & args]
   (println "Query:" query "\nArgs:" args)
@@ -104,8 +114,9 @@
         leftover-nodes (remove #(contains? existing-text (:text %)) original-nodes)]
     (into existing-nodes
         (when (seq leftover-nodes)
-          (into [{:level 1 :text leftover-tag}]
-                 (mapcat #(ent->nodes % 2) leftover-nodes))))))
+          (let [id->name (cset/map-invert (db/name-id-map))]
+            (into [{:level 1 :text leftover-tag}]
+                  (mapcat #(ent->nodes % 2 id->name) leftover-nodes)))))))
 
 (cmd/command {:command :kukui.query-with-local-type
               :desc "kukui: Opens query over current branch for chosen tag type"
