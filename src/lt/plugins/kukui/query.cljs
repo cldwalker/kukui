@@ -87,8 +87,8 @@
      :else [(reader/read-string
              (str "[:find ?e :in $ % :where " input "]"))])))
 
-(cmd/command {:command :kukui.query-with-named-queries
-              :desc "kukui: Open db query in temp file"
+(cmd/command {:command :kukui.query-and-open-file
+              :desc "kukui: Opens query results in a temp file as an outline"
               :exec (fn []
                       (let [ed (pool/last-active)
                             line (s/triml (editor/line ed (.-line (editor/cursor ed))))
@@ -136,11 +136,11 @@
                         (util/ensure-and-focus-second-tabset)
                         (cmd/exec! :open-path path)))})
 
-(cmd/command {:command :kukui.query-with-datascript
-              :desc "kukui: Execute a datascript query"
+(cmd/command {:command :kukui.query-and-print
+              :desc "kukui: Prints query result to stdout/console"
               :exec (fn []
                      (let [ed (pool/last-active)
                            line (editor/line ed (.-line (editor/cursor ed)))
-                           query (reader/read-string line)
-                           result (d/qae query)]
+                           [query & args] (input->query-and-args line)
+                           result (apply d/qae query db/rules args)]
                        (util/pprint result)) )})
