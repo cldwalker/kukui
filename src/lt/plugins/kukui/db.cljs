@@ -83,7 +83,10 @@
                             (lines ?e ?file ?first ?last)]
    'or-tags '[:find ?input-tag ?e
               :in $ % [?input-tag ...]
-              :where (tagged-with ?e ?input-tag)]})
+              :where (tagged-with ?e ?input-tag)]
+   'or-ents '[:find ?input-name ?e
+              :in $ % [?input-name ...]
+              :where [?e :name ?input-name]]})
 
 (defn name-id-map []
   (into {} (d/q ('named-ents named-queries))))
