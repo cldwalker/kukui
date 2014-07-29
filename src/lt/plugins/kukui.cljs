@@ -179,8 +179,8 @@
 
 (defn ->ent [->id id->name updated-names thing]
   (cond-> {:db/id (->id (:id thing))
-           :tags (mapv (comp ->id :db/id) (:tags thing))
-           :type (as-> (-> thing :types first :db/id id->name) type
+           :tags (mapv ->id (:tags thing))
+           :type (as-> (-> thing :types first id->name) type
                        (if (= type "tag") db/unknown-type type))
            :semtag true}
           (seq (:desc thing)) (assoc :text (:desc thing))
@@ -195,6 +195,12 @@
                 files/open-sync
                 :content
                 reader/read-string)
+        things (map (fn [thing]
+                      (assoc thing
+                        :id (- (:id thing))
+                        :types (map (comp - :db/id) (:types thing))
+                        :tags (map (comp - :db/id) (:tags thing))))
+                    things)
         id->name (into {}
                        (keep #(when-let [n (or (:alias %) (:name %))]
                                 [(:id %) n]) things))
