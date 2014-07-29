@@ -157,10 +157,6 @@
                             (prn e (ex-data e))
                             (println (.-stack e))))))})
 
-(cmd/command {:command :kukui.reset-sync
-              :desc "kukui: Resets sync"
-              :exec sync/reset-sync!})
-
 (def entity-selector
   (selector/selector {:items (fn []
                                (sort-by :name
@@ -194,15 +190,17 @@
           (assoc :name (or (:alias thing) (:name thing)))))
 
 (defn import-semtag-data []
-  (let [things (-> (files/home "code/plugins/kukui/db.clj")
-                   files/open-sync
-                   :content
-                   reader/read-string)
+  (let [things (->
+                (files/join (files/lt-user-dir "plugins") "kukui" "db.clj")
+                files/open-sync
+                :content
+                reader/read-string)
         id->name (into {}
                        (keep #(when-let [n (or (:alias %) (:name %))]
                                 [(:id %) n]) things))
         existing-names (db/name-id-map)
         updated-names (cset/intersection (set (keys existing-names)) (set (vals id->name)))
+        _ (prn "Following names already exist but will thave their type updated:" updated-names)
         ->id #(if (contains? updated-names (id->name %))
                 (-> % id->name existing-names)
                 %)
@@ -218,10 +216,15 @@
               :desc "kukui: Imports semtag data"
               :exec import-semtag-data})
 
-(comment
+(cmd/command {:command :kukui.reset-sync
+              :desc "kukui: Resets sync"
+              :exec (fn []
+                      (sync/reset-sync!)
+                      (when (files/exists? (files/join (files/lt-user-dir "plugins") "kukui" "db.clj"))
+                        (import-semtag-data))
+                      (notifos/set-msg! "Reset!"))})
 
-  (map :name invalid)
-  (util/pprint (map #(vector (d/find-first :name (:name %)) %) invalid))
+(comment
 
   )
 
