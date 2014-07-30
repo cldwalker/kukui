@@ -87,16 +87,20 @@
      :else [(reader/read-string
              (str "[:find ?e :in $ % :where " input "]"))])))
 
+(defn input->path [ed input]
+  (let [query-and-args (input->query-and-args input)
+        nodes (apply query->nodes query-and-args)
+        result (kc/tree->string nodes (editor/option ed "tabSize"))
+        path (util/tempfile "kukui-query" ".otl")]
+    (files/save path result)
+    path))
+
 (cmd/command {:command :kukui.query-and-open-file
               :desc "kukui: Opens query results in a temp file as an outline"
               :exec (fn []
                       (let [ed (pool/last-active)
                             line (s/triml (editor/line ed (.-line (editor/cursor ed))))
-                            query-and-args (input->query-and-args line)
-                            nodes (apply query->nodes query-and-args)
-                            result (kc/tree->string nodes (editor/option ed "tabSize"))
-                            path (util/tempfile "kukui-query" ".otl")]
-                        (files/save path result)
+                            path (input->path ed line)]
                         (cmd/exec! :open-path path)))})
 
 (def type-selector
@@ -144,3 +148,37 @@
                            [query & args] (input->query-and-args line)
                            result (apply d/qae query db/rules args)]
                        (util/pprint result)) )})
+
+
+(defn current-word*
+  "Returns current word given string and cursor position in string"
+  [string cursor]
+  (str
+   (re-find #"[^\s:()\"]+$" (subs string 0 cursor))
+   (re-find #"^[^\s:()\"]+" (subs string cursor))))
+
+(defn current-word
+  "Current word under cursor"
+  [ed]
+  (let [cursor (editor/->cursor ed)]
+    (current-word* (editor/line ed (:line cursor))
+                   (:ch cursor))))
+
+(defn current-word-query [query]
+  (let [ed (pool/last-active)
+        input (util/format query (current-word ed))
+        path (input->path ed input)]
+    (util/ensure-and-focus-second-tabset)
+    (cmd/exec! :open-path path)))
+
+(cmd/command {:command :kukui.open-entity-tagged
+              :desc "kukui: Opens current word as tagged entity query"
+              :exec (partial current-word-query "(ent-by-type \"%s\")" )})
+
+(cmd/command {:command :kukui.open-entity
+              :desc "kukui: Opens current word as entity query"
+              :exec (partial current-word-query "[?e :name \"%s\"]")})
+
+(cmd/command {:command :kukui.open-entity-type
+              :desc "kukui: Opens current word as entity type query"
+              :exec (partial current-word-query "[?e :type \"%s\"]")})
