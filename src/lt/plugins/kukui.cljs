@@ -202,7 +202,8 @@
                         :tags (map (comp - :db/id) (:tags thing))))
                     things)
         id->name (into {}
-                       (keep #(when-let [n (or (:alias %) (:name %))]
+                       (keep #(when-let [n (cond (seq (:alias %)) (:alias %)
+                                                 (seq (:name %)) (:name %))]
                                 [(:id %) n]) things))
         existing-names (db/name-id-map)
         updated-names (cset/intersection (set (keys existing-names)) (set (vals id->name)))
@@ -231,6 +232,5 @@
                       (notifos/set-msg! "Reset!"))})
 
 (comment
-
   )
 
