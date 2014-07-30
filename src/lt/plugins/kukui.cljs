@@ -177,6 +177,10 @@
                         (notifos/set-msg! (str "No file and line exists for " (:name entity))
                                           {:class "error"})))})
 
+(defn ->semtag-name [thing]
+  (cond (seq (:alias thing)) (:alias thing)
+        (seq (:name thing)) (:name thing)))
+
 (defn ->ent [->id id->name updated-names thing]
   (cond-> {:db/id (->id (:id thing))
            :tags (mapv ->id (:tags thing))
@@ -185,9 +189,9 @@
            :semtag true}
           (seq (:desc thing)) (assoc :text (:desc thing))
           (seq (:url thing)) (assoc :url (:url thing))
-          (let [name (or (:alias thing) (:name thing))]
+          (let [name (->semtag-name thing)]
             (and (seq name) (not (contains? updated-names name))))
-          (assoc :name (or (:alias thing) (:name thing)))))
+          (assoc :name (->semtag-name thing))))
 
 (defn import-semtag-data []
   (let [things (->
@@ -202,8 +206,7 @@
                         :tags (map (comp - :db/id) (:tags thing))))
                     things)
         id->name (into {}
-                       (keep #(when-let [n (cond (seq (:alias %)) (:alias %)
-                                                 (seq (:name %)) (:name %))]
+                       (keep #(when-let [n (->semtag-name %)]
                                 [(:id %) n]) things))
         existing-names (db/name-id-map)
         updated-names (cset/intersection (set (keys existing-names)) (set (vals id->name)))
@@ -232,5 +235,8 @@
                       (notifos/set-msg! "Reset!"))})
 
 (comment
+  (def ents (d/qf '[:find ?name :where [?e :type "type"] [?e :name ?name]]))
+  (def names (d/qf '[:find ?name :where [?e :type ?name]]))
+  (cset/difference (set names) (set ents))
   )
 
