@@ -30,9 +30,13 @@
                @new-tags)
           entities-with-tags)))
 
-(defn add-types [entities]
-  (let [existing-types (set (d/qf '[:find ?type
-                                     :where [?e :type ?type]]))]
+(defn add-types
+  [entities]
+  (let [existing-types (cset/union
+                        (set (d/qf '[:find ?name
+                                     :where [?e :type "type"] [?e :name ?name]]))
+                        (set (d/qf '[:find ?type
+                                     :where [?e :type ?type]])))]
     (->> entities
          (keep :type)
          set
