@@ -89,7 +89,10 @@
    'all-attr-counts '[:find ?val (count ?e)
                       :in $ ?attr
                       :where
-                      [?e ?attr ?val]]})
+                      [?e ?attr ?val]]
+   'tag-counts '[:find ?tag (count ?e)
+                 :in $ %
+                 :where (tagged-with ?e ?tag)]})
 
 (defn name-id-map []
   (into {} (d/q ('named-ents named-queries))))
@@ -160,6 +163,12 @@
           [?t :type ?type]]
         rules file (first lines) (last lines)))
 
+
+(defn tag-counts
+  []
+  (sort-by (comp - second)
+           (d/q ('tag-counts named-queries)rules)))
+
 (defn ->tag-counts
   [results]
   (->> results
@@ -170,27 +179,27 @@
         #(assoc-in %1 (butlast %2) (last %2))
         {})))
 
-(defn tag-counts
+(defn tag-counts-by-type-and-tag
   "Returns a nested map of tag names and counts by tag type"
   [file lines]
   (->tag-counts
    (d/q '[:find ?type ?tag (count ?e)
           :in $ % ?file ?first ?last
           :where
-          [?e :tags ?t]
-          [?t :type ?type]
-          [?t :name ?tag]
-          (lines ?e ?file ?first ?last)]
+          (lines ?e ?file ?first ?last)
+          (tagged-ent-with ?e ?t ?tag)
+          [?t :type ?type]]
         rules file (first lines) (last lines))))
 
-(defn all-tag-counts
+(defn all-tag-counts-by-type-and-tag
   []
   (->tag-counts
    (d/q '[:find ?type ?tag (count ?e)
+          :in $ %
           :where
-          [?e :tags ?t]
-          [?t :type ?type]
-          [?t :name ?tag]])))
+          (tagged-ent-with ?e ?t ?tag)
+          [?t :type ?type]]
+        rules)))
 
 (defn types-and-names
   "Returns a list of types with each type having entity names of that type"
@@ -247,20 +256,6 @@
 (init)
 
 (comment
-  ;; counts by type
-  (sort-by (comp - second)
-           (d/q '[:find ?type (count ?e)
-                   :where
-                   [?e :type ?type]]))
-
-  ;; counts by tag
-  (sort-by (comp - second)
-           (d/q '[:find ?tag (count ?e)
-                   :where
-                   [?e :tags ?t]
-                   [?t :name ?tag]]))
-
-
   ;; counts by tag broken down by type
   (->> (d/q '[:find ?tag ?type (count ?e)
                :where

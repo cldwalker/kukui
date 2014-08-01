@@ -28,12 +28,12 @@
     (println "Tag counts")
     (util/pprint (sort-by first
                           (map (fn [[k v]] [k (util/->val-sorted-map v)])
-                               (db/tag-counts file lines))))
+                               (db/tag-counts-by-type-and-tag file lines))))
     (println "Tag counts by type")
     (prn (sort-by second >
           (map (fn [[type tag-map]]
                  [type (apply + (vals tag-map))])
-               (db/tag-counts file lines))))
+               (db/tag-counts-by-type-and-tag file lines))))
     (prn "Misc counts" {:untagged (count (filter #(and (empty? (:name %)) (empty? (:tags %)))
                                                  nodes))
                         :nodes (count nodes)})
@@ -44,12 +44,12 @@
   (println "Tag counts")
   (util/pprint (sort-by first
                         (map (fn [[k v]] [k (util/->val-sorted-map v)])
-                             (db/all-tag-counts))))
+                             (db/all-tag-counts-by-type-and-tag))))
   (println "Tag counts by type")
   (prn (sort-by second >
                 (map (fn [[type tag-map]]
                        [type (apply + (vals tag-map))])
-                     (db/all-tag-counts))))
+                     (db/all-tag-counts-by-type-and-tag))))
   (let [nodes (db/->all-nodes)]
     (prn "Misc counts" {:untagged (count (filter #(and (empty? (:name %)) (empty? (:tags %)))
                                                  nodes))
