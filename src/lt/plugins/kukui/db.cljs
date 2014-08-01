@@ -40,9 +40,8 @@
 ;; Queries
 ;; =======
 
-
 (def named-queries
-  "Named datalog queries - accessible to db-query-temp-file cmd"
+  "Named datalog queries - used mostly by query cmds"
   {'ent-by-type  '[:find ?type ?e
                    :in $ % ?input-tag
                    :where (tagged-with ?e ?input-tag) [?e :type ?type]]
@@ -86,7 +85,11 @@
               :where (tagged-with ?e ?input-tag)]
    'or-ents '[:find ?input-name ?e
               :in $ % [?input-name ...]
-              :where [?e :name ?input-name]]})
+              :where [?e :name ?input-name]]
+   'all-attr-counts '[:find ?val (count ?e)
+                      :in $ ?attr
+                      :where
+                      [?e ?attr ?val]]})
 
 (defn name-id-map []
   (into {} (d/q ('named-ents named-queries))))
@@ -144,11 +147,7 @@
 (defn all-attr-counts
   [attr]
   (sort-by second >
-           (d/q '[:find ?val (count ?e)
-                  :in $ ?attr
-                  :where
-                  [?e ?attr ?val]]
-                attr)))
+           (d/q ('all-attr-counts named-queries) attr)))
 
 (defn local-tag-types
   "Returns tag types for a given file range"

@@ -33,7 +33,7 @@
                 (attr ent)))})
 
 (defn ent->nodes [ent level id->name]
-  (let [ent (if (string? ent) {:text ent} ent)]
+  (let [ent (if (map? ent) ent {:text (str ent)})]
     (into [{:level level :text (ent-text ent)}]
         (into
          (mapv #(attr-node % ent level id->name)
@@ -41,15 +41,37 @@
          (map #(hash-map :level (inc level) :text (ent-text %))
              (:desc ent))))))
 
+(defn resolve-fn
+  "Only works when in non-advanced mode e.g. no munging."
+  [ns-obj f]
+  (aget ns-obj
+        ;; TODO: Add support for ->
+        (s/replace (str f) "-" "_")))
+
+(defn execute-query [default-executor query args]
+  ;; TODO: make executor configurable based on query metadata.
+  ;; Currently, a query executor exists if a fn of the same exists
+  ;; in lt.plugins.kukui.db
+  (if-let [executor (some->> query
+                             (get (cset/map-invert db/named-queries))
+                             (resolve-fn lt.plugins.kukui.db))]
+    ;; TODO: make post-executor configurable based on query metadata
+    (map (fn [[k v]] [k [v]])
+         (apply executor args))
+    (apply default-executor query args)))
+
 (defn find-one-query->nodes [query args]
   (let [ents (apply d/qe query db/rules args)
         id->name (cset/map-invert (db/name-id-map))]
     (vec (mapcat #(ent->nodes % 1 id->name) ents))))
 
+(defn default-second-executor [query args]
+  (->> (apply d/qae query db/rules args)
+       (group-by first)
+       (map (fn [[k pairs]] [k (map second pairs)]))))
+
 (defn find-two-query->nodes [query args]
-  (let [results (->> (apply d/qae query db/rules args)
-                     (group-by first)
-                     (map (fn [[k pairs]] [k (map second pairs)])))
+  (let [results (execute-query default-second-executor query args)
         id->name (cset/map-invert (db/name-id-map))]
     (vec (mapcat (fn [[group-key ents]]
                    (into [{:text group-key :level 1}]
@@ -57,7 +79,7 @@
                  results))))
 
 (defn query->nodes [query & args]
-  (println "Query:" query "\nArgs:" args)
+  (println "Query:" query "\nArgs:" (pr-str args))
   (let [finds (count (:find (ds/parse-query query)))]
     (case finds
       1 (find-one-query->nodes query args)
@@ -65,8 +87,8 @@
       (throw (ex-info (str "No render found for " finds " finds") {})))))
 
 ;; Use #fn in queries to refer to fns in cljs.core
-(reader/register-tag-parser! 'fn #(aget cljs.core
-                                        (clojure.string/replace (str %) "-" "_")))
+(reader/register-tag-parser! 'fn #(resolve-fn cljs.core %))
+
 (defn fn-string->query-args
   "If db/named-queries has a matching entry, return it along with args.
 
