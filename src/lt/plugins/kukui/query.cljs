@@ -65,7 +65,7 @@
         id->name (cset/map-invert (db/name-id-map))]
     (vec (mapcat #(ent->nodes % 1 id->name) ents))))
 
-(defn default-second-executor [query args]
+(defn default-second-executor [query & args]
   (->> (apply d/qae query db/rules args)
        (group-by first)
        (map (fn [[k pairs]] [k (map second pairs)]))))
