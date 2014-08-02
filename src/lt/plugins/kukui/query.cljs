@@ -109,12 +109,15 @@
      :else [(reader/read-string
              (str "[:find ?e :in $ % :where " input "]"))])))
 
+(def query-history (atom []))
+
 (defn input->path [ed input]
   (let [query-and-args (input->query-and-args input)
         nodes (apply query->nodes query-and-args)
         result (kc/tree->string nodes (editor/option ed "tabSize"))
         path (util/tempfile "kukui-query" ".otl")]
     (files/save path result)
+    (swap! query-history conj {:input input :path path})
     path))
 
 (cmd/command {:command :kukui.query-and-open-file
@@ -204,3 +207,18 @@
 (cmd/command {:command :kukui.open-entity-type
               :desc "kukui: Opens current word as entity type query"
               :exec (partial current-word-query "[?e :type \"%s\"]")})
+
+(def query-history-selector
+  (selector/selector {:items (fn []
+                               (sort-by :index
+                                        (map-indexed #(assoc %2
+                                                        :index %1
+                                                        :desc (str (inc %1) ". " (:input %2)))
+                                                     (reverse @query-history))))
+                      :key :desc}))
+
+(cmd/command {:command :kukui.previous-query
+              :desc "kukui: Opens previous query"
+              :options query-history-selector
+              :exec (fn [history-item]
+                      (cmd/exec! :open-path (:path history-item)))})
