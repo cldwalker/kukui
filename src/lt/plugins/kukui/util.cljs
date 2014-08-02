@@ -88,3 +88,30 @@
   (when (< (-> @tabs/multi :tabsets count) 2)
       (cmd/exec! :tabset.new))
   (cmd/exec! :tabset.next))
+
+(defn update-editor-path!
+  "Updates given editor to edit a new path. Appropriately swaps CM doc object,
+  refreshes editor keys and updates tags, info and listeners."
+  [ed path]
+  (let [info (merge {:mime "plaintext" :tags [:editor.plaintext]}
+                    (lt.objs.opener/path->info path))
+        content (:content (lt.objs.files/open-sync path))
+        doc (lt.objs.document/create {:line-ending lt.objs.files/line-ending
+                                      :mime (:mime info)
+                                      :mtime (lt.objs.files/stats path)
+                                      :content content})
+        ;; TODO: remove hardcoded brittle defaults
+        ;; These defaults may not work for others and for specific file types
+        default-tags #{:editor.inline-result :tabset.tab :editor.keys.vim.normal
+                       :editor.file-backed :object :editor.keys.vim :editor.keys.emacs :editor}
+        default-editor-keys #{:info :lt.object/id :lt.object/type :lt.objs.tabs/tabset :doc :tags
+                              :editor.generation :content :triggers :ed :children
+                              :listeners :behaviors :lt.objs.editor.pool/comment-options}
+        outdated-editor-keys (clojure.set/difference (set (keys @ed)) default-editor-keys)]
+    (lt.objs.document/register-doc doc path)
+    (lt.objs.editor/set-doc! ed doc)
+    ;; these should update listeners
+    (lt.object/remove-tags ed (clojure.set/difference (:tags @ed) default-tags))
+    (lt.object/add-tags ed (into default-tags (:tags info [])))
+    (lt.object/merge! ed {:info info})
+    (swap! ed #(apply dissoc % outdated-editor-keys))))

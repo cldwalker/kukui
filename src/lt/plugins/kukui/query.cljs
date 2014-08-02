@@ -221,4 +221,6 @@
               :desc "kukui: Opens previous query"
               :options query-history-selector
               :exec (fn [history-item]
-                      (cmd/exec! :open-path (:path history-item)))})
+                      (if (.contains (util/current-file) "kukui-query") ;; in a query file
+                        (util/update-editor-path! (pool/last-active) (:path history-item))
+                        (cmd/exec! :open-path (:path history-item))))})
