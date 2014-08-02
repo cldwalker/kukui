@@ -91,7 +91,7 @@
 
 (defn update-editor-path!
   "Updates given editor to edit a new path. Appropriately swaps CM doc object,
-  refreshes editor keys and updates tags, info and listeners."
+  refreshes editor keys and updates editor's tab, :tags, :info and :listeners."
   [ed path]
   (let [info (merge {:mime "plaintext" :tags [:editor.plaintext]}
                     (lt.objs.opener/path->info path))
@@ -114,4 +114,12 @@
     (lt.object/remove-tags ed (clojure.set/difference (:tags @ed) default-tags))
     (lt.object/add-tags ed (into default-tags (:tags info [])))
     (lt.object/merge! ed {:info info})
-    (swap! ed #(apply dissoc % outdated-editor-keys))))
+    (swap! ed #(apply dissoc % outdated-editor-keys))
+    (when-let [ts (:lt.objs.tabs/tabset @ed)]
+      (lt.object/raise ts :tab.updated))))
+
+(comment
+  (def ed (first (pool/containing-path "db.cljs")))
+  (def path (-> @lt.plugins.kukui.query/query-history first :path))
+  (update-editor-path! ed path)
+  )
