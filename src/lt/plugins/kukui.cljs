@@ -15,7 +15,6 @@
             [lt.plugins.kukui.sync :as sync]
             [lt.plugins.kukui.db :as db]
             [lt.plugins.kukui.datascript :as d]
-            [lt.plugins.sacha :as sacha]
             [lt.plugins.sacha.codemirror :as c]))
 
 (defn db->nodes
@@ -87,17 +86,6 @@
 
 ;; Misc commands
 ;; =============
-
-;; move to sacha once descs land
-(cmd/command {:command :kukui.raise-node
-              :desc "kukui: Raises node to replace parent and sets it to parent's level"
-              :exec (fn []
-                      (let [ed (pool/last-active)
-                            parent-line (util/find-parent-line ed (.-line (editor/cursor ed)))]
-                        (editor/operation ed
-                                          (fn []
-                                            (c/delete-lines ed parent-line parent-line)
-                                            (sacha/indent-branch "subtract")))))})
 
 (defn replace-children [ed view-fn]
   (let [end-line (c/safe-next-non-child-line ed (.-line (editor/cursor ed)))

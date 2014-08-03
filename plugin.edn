@@ -3,5 +3,5 @@
  :author "Gabriel Horner"
  :source "https://github.com/cldwalker/kukui"
  :desc ""
- :dependencies {"sacha" "0.1.0"}
+ :dependencies {"sacha" "0.2.0"}
  :behaviors "kukui.behaviors"}

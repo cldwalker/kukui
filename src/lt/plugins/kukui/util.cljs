@@ -15,14 +15,10 @@
                   s)
   ed)
 
-;; consider moving to sacha
-(defn find-parent-line [ed line]
-  (c/find-parent ed (range (dec line) -1 -1) (c/line-indent ed line)))
-
 (defn find-parent-lines
   "Finds range of lines for parent and returns all lines in file when no parent"
   [ed line]
-  (if-let [parent-line (find-parent-line ed line)]
+  (if-let [parent-line (c/find-parent-line ed line)]
     (range parent-line (c/safe-next-non-child-line ed parent-line))
     ;; If no parent, assume at top level and search whole file
     (range (editor/first-line ed) (inc (editor/last-line ed)))))
