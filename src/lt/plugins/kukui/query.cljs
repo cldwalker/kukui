@@ -143,7 +143,7 @@
                       (let [ed (pool/last-active)
                             line (s/triml (editor/line ed (.-line (editor/cursor ed))))
                             path (input->path ed line)]
-                        (cmd/exec! :open-path path)
+                        (util/jump-to ed path)
                         (add-ids-to-query-file)))})
 
 (def type-selector
@@ -179,7 +179,7 @@
                                                       (db/->nodes (util/current-file ed) lines))
                             path (nodes->path ed nodes (str query))]
                         (util/ensure-and-focus-second-tabset)
-                        (cmd/exec! :open-path path)
+                        (util/jump-to ed path)
                         (add-ids-to-query-file)))})
 
 (cmd/command {:command :kukui.query-and-print
@@ -211,7 +211,7 @@
         input (util/format query (current-word ed))
         path (input->path ed input)]
     (util/ensure-and-focus-second-tabset)
-    (cmd/exec! :open-path path)
+    (util/jump-to ed path)
     (add-ids-to-query-file)))
 
 (cmd/command {:command :kukui.open-entity-tagged
@@ -241,7 +241,7 @@
               :exec (fn [query-item]
                       (if (.contains (util/current-file) "kukui-query") ;; in a query file
                         (util/update-editor-path! (pool/last-active) (:path query-item))
-                        (cmd/exec! :open-path (:path query-item)))
+                        (util/jump-to (pool/last-active) (:path query-item)))
                       (add-ids-to-query-file query-item))})
 
 (cmd/command {:command :kukui.jump-to-query-result-source
@@ -252,8 +252,7 @@
                         (if-let [entity (some-> (aget (editor/line-handle ed line) "kukui-id")
                                                 d/entity)]
                           (if (and (:file entity) (:line entity))
-                            (do (cmd/exec! :open-path (:file entity))
-                              (cmd/exec! :goto-line (inc (:line entity))))
+                            (util/jump-to ed (:file entity) (:line entity))
                             (notifos/set-msg! (str "No file and line exists for entity " (:id entity))
                                               {:class "error"}))
                           (notifos/set-msg! (str "No entity found for line " (inc line))
@@ -291,6 +290,7 @@
                       (query-types-counts (pool/last-active)))})
 
 (comment
+  (count (:stack @lt.objs.jump-stack/jump-stack))
   (def lh (editor/line-handle ed 17))
   (.on lh "delete" (fn [line obj]
                      (.log js/console "DELETED" line)

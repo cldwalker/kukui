@@ -4,6 +4,8 @@
             [lt.objs.files :as files]
             [lt.objs.tabs :as tabs]
             [lt.objs.command :as cmd]
+            [lt.objs.jump-stack :as jump-stack]
+            [lt.object :as object]
             [clojure.string :as s]
             [lt.plugins.sacha.codemirror :as c]))
 
@@ -113,6 +115,16 @@
     (swap! ed #(apply dissoc % outdated-editor-keys))
     (when-let [ts (:lt.objs.tabs/tabset @ed)]
       (lt.object/raise ts :tab.updated))))
+
+(defn jump-to
+  "Jumps to given file and optional line and adds last cursor to jump-stack"
+  ([ed path] (jump-to ed path 0))
+  ([ed path line]
+   (object/raise jump-stack/jump-stack
+                 :jump-stack.push!
+                 ed
+                 path
+                 {:line line :ch 0})))
 
 (comment
   (def ed (first (pool/containing-path "db.cljs")))

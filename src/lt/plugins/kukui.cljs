@@ -160,8 +160,7 @@
               :options entity-selector
               :exec (fn [entity]
                       (if (and (:file entity) (:line entity))
-                        (do (cmd/exec! :open-path (:file entity))
-                            (cmd/exec! :goto-line (inc (:line entity))))
+                        (util/jump-to (pool/last-active) (:file entity) (:line entity))
                         (notifos/set-msg! (str "No file and line exists for " (:name entity))
                                           {:class "error"})))})
 
