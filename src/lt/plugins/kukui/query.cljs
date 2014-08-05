@@ -258,6 +258,38 @@
                                               {:class "error"}))
                           (notifos/set-msg! (str "No entity found for line " (inc line))
                                             {:class "error"}))))})
+
+(defn ed->ids
+  "Returns db ids for given editor of a query result file"
+  [ed]
+  (remove nil?
+          (let [ids (transient [])]
+            (.eachLine (-> @ed :doc deref :doc)
+                       (fn [lh]
+                         (conj! ids (aget lh "kukui-id"))
+                         nil))
+            (persistent! ids))))
+
+(defn query-types-counts
+  [ed]
+  (let [ids (ed->ids ed)]
+    (println "Tag counts")
+    (util/pprint (sort-by first
+                          (map (fn [[k v]] [k (util/->val-sorted-map v)])
+                               (db/tag-counts-by-type-and-tag-for-ids ids))))
+    (println "Tag counts by type")
+    (prn (sort-by second >
+                  (map (fn [[type tag-map]]
+                         [type (apply + (vals tag-map))])
+                       (db/tag-counts-by-type-and-tag-for-ids ids))))
+    (println "Node counts by type")
+    (util/pprint (db/attr-counts-for-ids :type ids))))
+
+(cmd/command {:command :kukui.query-types-counts
+              :desc "kukui: Same as :types-counts but for query file"
+              :exec (fn []
+                      (query-types-counts (pool/last-active)))})
+
 (comment
   (def lh (editor/line-handle ed 17))
   (.on lh "delete" (fn [line obj]
@@ -266,11 +298,7 @@
   (.on (:ed @ed) "change" (fn [_ obj]
                             (println "CHANGE")
                             (.log js/console obj)))
-  (aset (editor/line-handle ed 17) "kukui-id" 2096)
-  (aget (editor/line-handle ed 17) "kukui-id")
 
-  (let [ids (transient [])]
-    (.eachLine (editor/->cm-ed ed)))
   (def path (:path (last @query-history)))
   (def ed (first (pool/by-path path)))
   )

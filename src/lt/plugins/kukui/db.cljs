@@ -90,6 +90,10 @@
                       :in $ ?attr
                       :where
                       [?e ?attr ?val]]
+   'all-attr-counts-for-ids '[:find ?val (count ?e)
+                              :in $ ?attr [?e ...]
+                              :where
+                              [?e ?attr ?val]]
    'tag-counts '[:find ?tag (count ?e)
                  :in $ %
                  :where (tagged-with ?e ?tag)]})
@@ -147,6 +151,13 @@
                   (lines ?e ?file ?first ?last)]
                 rules file (first lines) (last lines) attr)))
 
+
+(defn attr-counts-for-ids
+  [attr ids]
+  (sort-by second >
+           (d/q ('all-attr-counts-for-ids named-queries)
+                attr ids)))
+
 (defn all-attr-counts
   [attr]
   (sort-by second >
@@ -190,6 +201,16 @@
           (tagged-ent-with ?e ?t ?tag)
           [?t :type ?type]]
         rules file (first lines) (last lines))))
+
+(defn tag-counts-by-type-and-tag-for-ids
+  [ids]
+  (->tag-counts
+   (d/q '[:find ?type ?tag (count ?e)
+          :in $ % [?e ...]
+          :where
+          (tagged-ent-with ?e ?t ?tag)
+          [?t :type ?type]]
+        rules ids)))
 
 (defn all-tag-counts-by-type-and-tag
   []
