@@ -3,6 +3,7 @@
             [lt.objs.editor.pool :as pool]
             [lt.objs.command :as cmd]
             [lt.objs.files :as files]
+            [lt.objs.notifos :as notifos]
             [cljs.reader :as reader]
             [clojure.set :as cset]
             [clojure.string :as s]
@@ -34,7 +35,8 @@
 
 (defn ent->nodes [ent level id->name]
   (let [ent (if (map? ent) ent {:text (str ent)})]
-    (into [{:level level :text (ent-text ent)}]
+    (into [(cond-> {:level level :text (ent-text ent)}
+                   (:db/id ent) (assoc :id (:db/id ent)))]
         (into
          (mapv #(attr-node % ent level id->name)
                (sort (cset/difference (set (keys ent)) hidden-attributes)))
@@ -115,10 +117,21 @@
   (let [query-and-args (input->query-and-args input)
         nodes (apply query->nodes query-and-args)
         result (kc/tree->string nodes (editor/option ed "tabSize"))
-        path (util/tempfile "kukui-query" ".otl")]
+        path (util/tempfile "kukui-query" ".otl")
+        lines-ids (->> nodes
+                       (map-indexed #(assoc %2 :line %1))
+                       (filter :id)
+                       (map (juxt :line :id))
+                       (into {}))]
     (files/save path result)
-    (swap! query-history conj {:input input :path path})
+    (swap! query-history conj {:input input :path path :lines-ids lines-ids})
     path))
+
+(defn add-ids-to-last-query-file []
+  (let [query (last @query-history)
+        ed (first (pool/by-path (:path query)))]
+    (doseq [[line id] (:lines-ids query)]
+      (aset (editor/line-handle ed line) "kukui-id" id))))
 
 (cmd/command {:command :kukui.query-and-open-file
               :desc "kukui: Opens query results in a temp file as an outline"
@@ -126,7 +139,8 @@
                       (let [ed (pool/last-active)
                             line (s/triml (editor/line ed (.-line (editor/cursor ed))))
                             path (input->path ed line)]
-                        (cmd/exec! :open-path path)))})
+                        (cmd/exec! :open-path path)
+                        (add-ids-to-last-query-file)))})
 
 (def type-selector
   (selector/selector {:items (fn []
@@ -194,7 +208,8 @@
         input (util/format query (current-word ed))
         path (input->path ed input)]
     (util/ensure-and-focus-second-tabset)
-    (cmd/exec! :open-path path)))
+    (cmd/exec! :open-path path)
+    (add-ids-to-last-query-file)))
 
 (cmd/command {:command :kukui.open-entity-tagged
               :desc "kukui: Opens current word as tagged entity query"
@@ -224,3 +239,32 @@
                       (if (.contains (util/current-file) "kukui-query") ;; in a query file
                         (util/update-editor-path! (pool/last-active) (:path history-item))
                         (cmd/exec! :open-path (:path history-item))))})
+
+(cmd/command {:command :kukui.jump-to-query-result-source
+              :desc "kukui: Jump to a query result's line and file"
+              :exec (fn []
+                      (let [ed (pool/last-active)
+                            line (.-line (editor/cursor ed))]
+                        (if-let [entity (some-> (aget (editor/line-handle ed line) "kukui-id")
+                                                d/entity)]
+                          (if (and (:file entity) (:line entity))
+                            (do (cmd/exec! :open-path (:file entity))
+                              (cmd/exec! :goto-line (inc (:line entity))))
+                            (notifos/set-msg! (str "No file and line exists for entity " (:id entity))
+                                              {:class "error"}))
+                          (notifos/set-msg! (str "No entity found for line " (inc line))
+                                            {:class "error"}))))})
+(comment
+  (def lh (editor/line-handle ed 17))
+  (.on lh "delete" (fn [line obj]
+                     (.log js/console "DELETED" line)
+                     ))
+  (.on (:ed @ed) "change" (fn [_ obj]
+                            (println "CHANGE")
+                            (.log js/console obj)))
+  (aset (editor/line-handle ed 17) "kukui-id" 2096)
+  (aget (editor/line-handle ed 17) "kukui-id")
+
+  (def path (:path (last @query-history)))
+  (def ed (first (pool/by-path path)))
+  )
