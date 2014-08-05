@@ -113,10 +113,8 @@
 
 (def query-history (atom []))
 
-(defn input->path [ed input]
-  (let [query-and-args (input->query-and-args input)
-        nodes (apply query->nodes query-and-args)
-        result (kc/tree->string nodes (editor/option ed "tabSize"))
+(defn nodes->path [ed nodes input]
+  (let [result (kc/tree->string nodes (editor/option ed "tabSize"))
         path (util/tempfile "kukui-query" ".otl")
         lines-ids (->> nodes
                        (map-indexed #(assoc %2 :line %1))
@@ -126,6 +124,11 @@
     (files/save path result)
     (swap! query-history conj {:input input :path path :lines-ids lines-ids})
     path))
+
+(defn input->path [ed input]
+  (let [query-and-args (input->query-and-args input)
+        nodes (apply query->nodes query-and-args)]
+    (nodes->path ed nodes input)))
 
 (defn add-ids-to-last-query-file []
   (let [query (last @query-history)
@@ -173,11 +176,10 @@
                             nodes (find-two-query->nodes query args)
                             nodes (add-leftover-nodes nodes
                                                       (db/->nodes (util/current-file ed) lines))
-                            result (kc/tree->string nodes (editor/option ed "tabSize"))
-                            path (util/tempfile "kukui-query" ".otl")]
-                        (files/save path result)
+                            path (nodes->path ed nodes (str query))]
                         (util/ensure-and-focus-second-tabset)
-                        (cmd/exec! :open-path path)))})
+                        (cmd/exec! :open-path path)
+                        (add-ids-to-last-query-file)))})
 
 (cmd/command {:command :kukui.query-and-print
               :desc "kukui: Prints query result to stdout/console"
