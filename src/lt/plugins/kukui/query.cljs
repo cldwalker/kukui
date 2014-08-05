@@ -130,11 +130,12 @@
         nodes (apply query->nodes query-and-args)]
     (nodes->path ed nodes input)))
 
-(defn add-ids-to-last-query-file []
-  (let [query (last @query-history)
-        ed (first (pool/by-path (:path query)))]
+(defn add-ids-to-query-file
+  ([] (add-ids-to-query-file (last @query-history)))
+  ([query]
+   (let [ed (first (pool/by-path (:path query)))]
     (doseq [[line id] (:lines-ids query)]
-      (aset (editor/line-handle ed line) "kukui-id" id))))
+      (aset (editor/line-handle ed line) "kukui-id" id)))))
 
 (cmd/command {:command :kukui.query-and-open-file
               :desc "kukui: Opens query results in a temp file as an outline"
@@ -143,7 +144,7 @@
                             line (s/triml (editor/line ed (.-line (editor/cursor ed))))
                             path (input->path ed line)]
                         (cmd/exec! :open-path path)
-                        (add-ids-to-last-query-file)))})
+                        (add-ids-to-query-file)))})
 
 (def type-selector
   (selector/selector {:items (fn []
@@ -179,7 +180,7 @@
                             path (nodes->path ed nodes (str query))]
                         (util/ensure-and-focus-second-tabset)
                         (cmd/exec! :open-path path)
-                        (add-ids-to-last-query-file)))})
+                        (add-ids-to-query-file)))})
 
 (cmd/command {:command :kukui.query-and-print
               :desc "kukui: Prints query result to stdout/console"
@@ -211,7 +212,7 @@
         path (input->path ed input)]
     (util/ensure-and-focus-second-tabset)
     (cmd/exec! :open-path path)
-    (add-ids-to-last-query-file)))
+    (add-ids-to-query-file)))
 
 (cmd/command {:command :kukui.open-entity-tagged
               :desc "kukui: Opens current word as tagged entity query"
@@ -237,10 +238,11 @@
 (cmd/command {:command :kukui.previous-query
               :desc "kukui: Opens previous query"
               :options query-history-selector
-              :exec (fn [history-item]
+              :exec (fn [query-item]
                       (if (.contains (util/current-file) "kukui-query") ;; in a query file
-                        (util/update-editor-path! (pool/last-active) (:path history-item))
-                        (cmd/exec! :open-path (:path history-item))))})
+                        (util/update-editor-path! (pool/last-active) (:path query-item))
+                        (cmd/exec! :open-path (:path query-item)))
+                      (add-ids-to-query-file query-item))})
 
 (cmd/command {:command :kukui.jump-to-query-result-source
               :desc "kukui: Jump to a query result's line and file"
@@ -267,6 +269,8 @@
   (aset (editor/line-handle ed 17) "kukui-id" 2096)
   (aget (editor/line-handle ed 17) "kukui-id")
 
+  (let [ids (transient [])]
+    (.eachLine (editor/->cm-ed ed)))
   (def path (:path (last @query-history)))
   (def ed (first (pool/by-path path)))
   )
