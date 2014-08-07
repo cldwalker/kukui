@@ -30,15 +30,23 @@
          :desc [{:text "      + some desc"}]}]
        4 2 1))))
 
+(defn ->nodes [nodes]
+  (->> nodes
+       (map-indexed
+        #(hash-map
+          :text %2
+          :line %1
+          :indent (count (re-find #"^\s*" %2))))
+       vec))
 
 (deftest add-attributes-to-nodes
   (testing "normal tags and inherited ones"
     (is
-     (let [nodes [{:line 0 :indent 0 :text "#p0"}
-                  {:line 1 :indent 2 :text "  eat"}
-                  {:line 2 :indent 2 :text "  #?"}
-                  {:line 3 :indent 4 :text "    sleep #periodic"}
-                  {:line 4 :indent 6 :text "      + FULLTEXT"}]]
+     (let [nodes (->nodes ["#p0"
+                           "  eat"
+                           "  #?"
+                           "    sleep #periodic"
+                           "      + FULLTEXT"])]
        (= [(assoc (nth nodes 1) :tags #{"p0"})
            (assoc (nth nodes 3)
              :tags #{"p0" "?" "periodic"}
@@ -47,21 +55,36 @@
   (testing "attribute tags - normal and attribute inheritence -
     children overrides its parents for a given attribute"
     (is
-     (let [nodes [{:line 0 :indent 0 :text "#type:td"}
-                  {:line 1 :indent 2 :text "  #type:note"}
-                  {:line 2 :indent 4 :text "    finish it"}
-                  {:line 3 :indent 4 :text "    shave a #size:big #yak #type:?"}]]
+     (let [nodes (->nodes ["#type:td"
+                           "  #type:note"
+                           "    finish it"
+                           "    shave a #size:big #yak #type:?"])]
        (= [(assoc (nth nodes 2) :tags #{} :type "note")
            (assoc (nth nodes 3) :tags #{"yak"} :type "?" :size "big")]
           (k/add-attributes-to-nodes nodes)))))
   (testing "parent with name attr - gets saved as a node and its tags aren't inherited"
     (is
-     (let [nodes [{:line 0 :indent 0 :text "#cljs"}
-                  {:line 0 :indent 2 :text "  #name:kukui #type:proj #LT"}
-                  {:line 1 :indent 4 :text "    good stuff #type:note"}]]
+     (let [nodes (->nodes ["#cljs"
+                           "  #name:kukui #type:proj #LT"
+                           "    good stuff #type:note"])]
        (= [(assoc (nth nodes 1) :name "kukui" :type "proj" :tags #{"cljs" "LT"})
            (assoc (nth nodes 2) :type "note" :tags #{"cljs" "kukui"})]
-          (k/add-attributes-to-nodes nodes))))))
+          (k/add-attributes-to-nodes nodes)))))
+  (testing "attributes - inline and in desc"
+    (is
+     (let [nodes (->nodes ["#type:wapp"
+                           "  hilarious #for:me #from:campfire"
+                           "    + :url: http://gifsound.com"
+                           "    + some paragraph"
+                           "    + like text"
+                           "    + :for: you"])]
+       (=
+        [(assoc (nth nodes 1)
+                 :for "you" :url "http://gifsound.com" :type "wapp"
+                 :from "campfire" :tags #{}
+                 :desc [(nth nodes 3)
+                        (nth nodes 4)])]
+        (k/add-attributes-to-nodes nodes))))))
 
 (deftest tree->string
   (is

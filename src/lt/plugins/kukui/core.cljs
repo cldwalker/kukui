@@ -84,6 +84,11 @@
           (into {}))
      (assoc node :tags (set tags)))))
 
+(defn add-from-desc [desc node]
+  (if-let [[_ attr value] (re-find #"\s*\+\s*:(\S*):\s*(.*)" (:text desc))]
+    (assoc node (keyword attr) value)
+    (assoc node :desc ((fnil conj []) (:desc node) desc))))
+
 (defn add-attributes-to-nodes
   "Adds :tags, :desc and custom attributes to nodes"
   [nodes]
@@ -111,8 +116,8 @@
 
            (desc-node? curr)
            (update-in accum
-                      [:nodes (dec (count (:nodes accum))) :desc]
-                      (fnil conj [])
+                      [:nodes (dec (count (:nodes accum)))]
+                      (partial add-from-desc curr)
                       curr)
            :else
            (update-in accum [:nodes]
