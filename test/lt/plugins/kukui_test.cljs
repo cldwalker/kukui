@@ -84,7 +84,19 @@
                  :from "campfire" :tags #{}
                  :desc [(nth nodes 3)
                         (nth nodes 4)])]
-        (k/add-attributes-to-nodes nodes))))))
+        (k/add-attributes-to-nodes nodes)))))
+  (testing "tags in desc"
+    (is
+     (let [nodes (->nodes ["#explore"
+                           "  #type:clip"
+                           "    good stuff"
+                           "      + :tags: viz, bret_victor"
+                           "      + just more text"])]
+       (= [(assoc (nth nodes 2)
+             :type "clip"
+             :tags #{"explore" "viz" "bret_victor"}
+             :desc [(nth nodes 4)])]
+          (k/add-attributes-to-nodes nodes))))))
 
 (deftest tree->string
   (is

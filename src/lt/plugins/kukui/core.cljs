@@ -86,7 +86,13 @@
 
 (defn add-from-desc [desc node]
   (if-let [[_ attr value] (re-find #"\s*\+\s*:(\S*):\s*(.*)" (:text desc))]
-    (assoc node (keyword attr) value)
+    (if (= "tags" attr)
+      (assoc node :tags (->> (s/split value #"\s*,\s*")
+                             (map (partial str tag-prefix))
+                             (s/join " ")
+                             text->tags
+                             (into (:tags node))))
+      (assoc node (keyword attr) value))
     (assoc node :desc ((fnil conj []) (:desc node) desc))))
 
 (defn add-attributes-to-nodes
