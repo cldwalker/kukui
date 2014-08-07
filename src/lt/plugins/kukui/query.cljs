@@ -3,6 +3,8 @@
             [lt.objs.editor.pool :as pool]
             [lt.objs.command :as cmd]
             [lt.objs.files :as files]
+            [lt.objs.find :as find]
+            [lt.object :as object]
             [lt.objs.notifos :as notifos]
             [cljs.reader :as reader]
             [clojure.set :as cset]
@@ -225,6 +227,15 @@
 (cmd/command {:command :kukui.open-entity-type
               :desc "kukui: Opens current word as entity type query"
               :exec (partial current-word-query "[?e :type \"%s\"]")})
+
+(cmd/command {:command :kukui.open-regex-search
+              :desc "kukui: Opens current word as regex search"
+              :exec (fn []
+                      (let [ed (pool/last-active)]
+                        (current-word-query "(search-all-attr #fn re-find #\"%s\")")
+                        (object/raise find/bar
+                                      :search!
+                                      (current-word ed))))})
 
 (def query-history-selector
   (selector/selector {:items (fn []
