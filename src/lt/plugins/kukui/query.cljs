@@ -12,6 +12,7 @@
             [lt.plugins.kukui.core :as kc]
             [lt.plugins.kukui.datascript :as d]
             [datascript :as ds]
+            [lt.plugins.sacha.codemirror :as c]
             [lt.plugins.kukui.selector :as selector]
             [lt.plugins.kukui.db :as db]
             [lt.plugins.kukui.util :as util]))
@@ -269,20 +270,20 @@
                           (notifos/set-msg! (str "No entity found for line " (inc line))
                                             {:class "error"}))))})
 
-(defn ed->ids
+(defn ed->db-line-handles
   "Returns db ids for given editor of a query result file"
   [ed]
-  (remove nil?
-          (let [ids (transient [])]
-            (.eachLine (-> @ed :doc deref :doc)
-                       (fn [lh]
-                         (conj! ids (aget lh "kukui-id"))
-                         nil))
-            (persistent! ids))))
+  (let [lhs (transient [])]
+    (.eachLine (-> @ed :doc deref :doc)
+               (fn [lh]
+                 (when (aget lh "kukui-id")
+                   (conj! lhs lh))
+                 nil))
+    (persistent! lhs)))
 
 (defn query-types-counts
   [ed]
-  (let [ids (ed->ids ed)]
+  (let [ids (map #(aget % "kukui-id") (ed->db-line-handles ed))]
     (println "Tag counts")
     (util/pprint (sort-by first
                           (map (fn [[k v]] [k (util/->val-sorted-map v)])
@@ -300,9 +301,29 @@
               :exec (fn []
                       (query-types-counts (pool/last-active)))})
 
+;; (let [line (.-line (editor/cursor ed))]
+;;       (prn (range line (c/safe-next-non-child-line ed line))))
+(defn lh->entity [lh]
+  {:text (.-text lh)
+   :id (aget lh "kukui-id")
+   :line (.lineNo lh)})
+
+(defn query-sync []
+  (let [ed (pool/last-active)
+        lhs (ed->db-line-handles ed)
+        ents (map lh->entity lhs)]
+    ))
+
+(cmd/command {:command :kukui.query-sync
+              :desc "kukui: Syncs query file to db"
+              :exec query-sync})
+
 (comment
-  (count (:stack @lt.objs.jump-stack/jump-stack))
-  (def lh (editor/line-handle ed 17))
+  (def ids (map #(aget % "kukui-id") (def lhs (ed->db-line-handles ed))))
+  (d/entity 2096)
+  (def lh (editor/line-handle ed 11))
+  (goog.object/getKeys lh)
+  (aget lh "kukui-id")
   (.on lh "delete" (fn [line obj]
                      (.log js/console "DELETED" line)
                      ))
