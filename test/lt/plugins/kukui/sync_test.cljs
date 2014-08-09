@@ -124,6 +124,26 @@
               [?e :text ?text]
               [?e :line ?line]]))))
 
+;; Query sync
+
+(defn ->ent-id [m]
+  (d/transact! [m])
+  (:db/id (d/find-first :text (:text m))))
+
+(deftest query-sync-updates-text
+  (testing "without file update"
+    (is
+     (when-let [id (->ent-id {:text "  wow"})]
+       (and (empty? (sync/query-sync [{:id id :text "really wow"}]))
+            (= "really wow" (:text (d/entity id)))))))
+  (testing "with file update"
+    (is
+     (let [node {:text "  wowz" :line 0 :file default-file}]
+       (when-let [id (->ent-id node)]
+         (and (= (list (assoc node :text "really wowz"))
+                 (sync/query-sync [{:id id :text "really wowz"}]))
+              (= "really wowz" (:text (d/entity id)))))))))
+
 (comment
   (sync/reset-sync!)
 

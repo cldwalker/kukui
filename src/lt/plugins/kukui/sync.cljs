@@ -2,6 +2,7 @@
   "Syncs a file to a db"
   (:require [lt.plugins.kukui.db :as db]
             [lt.plugins.kukui.datascript :as d]
+            [clojure.string :as s]
             [clojure.set :as cset]))
 
 (defn ->tag-id
@@ -164,6 +165,23 @@
 (defn reset-sync! []
   (db/init)
   (reset! last-edits {}))
+
+(defn updated-ent-tx [ent]
+  (let [orig (d/entity (:id ent))]
+    (if (not= (s/triml (:text orig)) (s/triml (:text ent)))
+      [{:db/id (:id ent) :text (:text ent)}]
+      [])))
+
+(defn query-sync
+  "Given a list of entities, updates them and returns a list of
+  file, line and num maps to update."
+  [ents]
+  (let [tx (mapcat updated-ent-tx ents)]
+    (d/transact! tx)
+    (->> tx
+         (map (comp d/entity :db/id))
+         (filter #(and (:line %) (:file %)))
+         (map #(select-keys % [:line :file :text])))))
 
 (comment
   ;; diff

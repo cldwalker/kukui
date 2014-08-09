@@ -15,6 +15,7 @@
             [lt.plugins.sacha.codemirror :as c]
             [lt.plugins.kukui.selector :as selector]
             [lt.plugins.kukui.db :as db]
+            [lt.plugins.kukui.sync :as sync]
             [lt.plugins.kukui.util :as util]))
 
 (def leftover-tag "leftover")
@@ -311,8 +312,9 @@
 (defn query-sync []
   (let [ed (pool/last-active)
         lhs (ed->db-line-handles ed)
-        ents (map lh->entity lhs)]
-    ))
+        ents (map lh->entity lhs)
+        updated (sync/query-sync ents)]
+    (prn "UPDATED" updated)))
 
 (cmd/command {:command :kukui.query-sync
               :desc "kukui: Syncs query file to db"
@@ -322,7 +324,7 @@
   (def ids (map #(aget % "kukui-id") (def lhs (ed->db-line-handles ed))))
   (d/entity 2096)
   (def lh (editor/line-handle ed 11))
-  (goog.object/getKeys lh)
+  (.-text lh)
   (aget lh "kukui-id")
   (.on lh "delete" (fn [line obj]
                      (.log js/console "DELETED" line)
