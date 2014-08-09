@@ -166,11 +166,13 @@
   (db/init)
   (reset! last-edits {}))
 
+(def no-text "---")
+
 (defn updated-ent-tx [ent]
   (let [orig (d/entity (:id ent))]
-    (if (not= (s/triml (:text orig)) (s/triml (:text ent)))
-      [{:db/id (:id ent) :text (:text ent)}]
-      [])))
+    (if (contains? #{no-text (s/triml (:text orig))} (s/triml (:text ent)))
+      []
+      [{:db/id (:id ent) :text (:text ent)}])))
 
 (defn query-sync
   "Given a list of entities, updates them and returns a list of

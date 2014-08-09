@@ -22,7 +22,7 @@
 
 (defn ent-text [ent]
   (or (:text ent)
-      (pr-str (dissoc ent :db/id))))
+      sync/no-text))
 
 (def hidden-attributes
   "Entity Attributes to hide in query results"
