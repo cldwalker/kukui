@@ -309,22 +309,45 @@
    :id (aget lh "kukui-id")
    :line (.lineNo lh)})
 
+(defn update-file-from-query-sync [path lines]
+  (let [content (s/split (:content (files/open-sync path)) #"\n")]
+    (s/join "\n"
+            (map-indexed
+             (fn [i line]
+               (if-let [new-line (some #(when (= i (:line %)) %) lines)]
+                 (str (re-find #"^\s*" line) (s/triml (:text new-line)))
+                 line))
+             content))))
+
+(defn files-must-be-in-sync [ids]
+  (let [files (set (keep (comp :file d/entity) ids))
+        [ed-files not-ed-files] ((juxt filter remove) #(-> % pool/by-path first) files)
+        dirty (filter :dirty (map #(-> % pool/by-path first deref) [file]))]
+    (when (seq not-ed-files)
+      (prn "Unable to verify these files not in buffers:" not-ed-files))
+    (when (seq dirty)
+      (prn "DIRTY" dirty)
+      (throw (ex-info (str "Following files are dirty or not in an editor: " dirty) {})))))
+
 (defn query-sync []
   (let [ed (pool/last-active)
         lhs (ed->db-line-handles ed)
         ents (map lh->entity lhs)
-        updated (sync/query-sync ents)]
-    (prn "UPDATED" updated)))
+        _ (files-must-be-in-sync (map :id ents))
+        lines-to-update (sync/query-sync ents)]
+    (doseq [[path lines] (group-by :file lines-to-update)]
+      (files/save path (update-file-from-query-sync path lines)))))
 
 (cmd/command {:command :kukui.query-sync
               :desc "kukui: Syncs query file to db"
               :exec query-sync})
 
 (comment
-  (def ids (map #(aget % "kukui-id") (def lhs (ed->db-line-handles ed))))
+  (def lines [{:line 6 :text "codez" :file "ok"}
+              {:line 8 :text "  whatever" :file "ok"}])
+  (def ids (map #(aget % "kukui-id") (ed->db-line-handles ed)))
   (d/entity 2096)
   (def lh (editor/line-handle ed 11))
-  (.-text lh)
   (aget lh "kukui-id")
   (.on lh "delete" (fn [line obj]
                      (.log js/console "DELETED" line)
@@ -335,4 +358,6 @@
 
   (def path (:path (last @query-history)))
   (def ed (first (pool/by-path path)))
+  (:dirty @ed)
+  (-> @ed :doc deref :doc .getValue (s/split #"\n"))
   )
