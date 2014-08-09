@@ -4,6 +4,7 @@
             [lt.plugins.kukui.db :as db]
             [lt.plugins.kukui.datascript :as d]
             [lt.plugins.kukui.core :as kc]
+            [lt.objs.files]
             [cemerick.cljs.test :as t]))
 
 (use-fixtures :each (fn [f]
