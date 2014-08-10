@@ -177,7 +177,8 @@
   (let [orig (d/entity (:id ent))]
     (if (contains? #{no-text (some-> (:text orig) s/triml)} (s/triml (:text ent)))
       []
-      [{:db/id (:id ent) :text (:text ent)}])))
+      [{:db/id (:id ent)
+        :text (str (re-find #"^\s*" (:text orig)) (s/triml (:text ent)))}])))
 
 (defn update-with-import-file [ents import-file import-file-exists?]
   (if import-file-exists?

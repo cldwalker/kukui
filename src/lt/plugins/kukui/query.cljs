@@ -321,8 +321,7 @@
                  (map-indexed
                   (fn [i line]
                     (if-let [new-line (some #(when (= i (:line %)) %) lines)]
-                      (str (re-find #"^\s*" line) (s/triml (:text new-line)))
-                      line))
+                      (:text new-line) line))
                   content))
          (when (seq append-body)
            (str "\n" append-body)))))
@@ -358,6 +357,7 @@
               :exec query-sync})
 
 (comment
+  (mapcat #(if (sequential? %) % [%]) (assoc [:a :b] 0 [:a :b]))
   (def lines [{:line 6 :text "codez" :file "ok" :type "note"}
               {:line 8 :text "  whatever" :file "ok"}])
   (def ids (map #(aget % "kukui-id") (ed->db-line-handles ed)))
