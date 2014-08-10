@@ -330,7 +330,7 @@
 (defn files-must-be-in-sync [ids]
   (let [files (set (keep (comp :file d/entity) ids))
         [ed-files not-ed-files] ((juxt filter remove) #(-> % pool/by-path first) files)
-        dirty (filter :dirty (map #(-> % pool/by-path first deref) [file]))]
+        dirty (filter :dirty (map #(-> % pool/by-path first deref) ed-files))]
     (when (seq not-ed-files)
       (prn "Unable to verify these files not in buffers:" not-ed-files))
     (when (seq dirty)
