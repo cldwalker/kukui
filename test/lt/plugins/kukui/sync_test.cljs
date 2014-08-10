@@ -141,8 +141,22 @@
      (let [node {:text "  wowz" :line 0 :file default-file}]
        (when-let [id (->ent-id node)]
          (and (= (list (assoc node :text "really wowz"))
-                 (sync/query-sync [{:id id :text "really wowz"}]))
-              (= "really wowz" (:text (d/entity id)))))))))
+                 (map #(dissoc % :db/id)
+                      (sync/query-sync [{:id id :text "really wowz"}])))
+              (= "really wowz" (:text (d/entity id))))))))
+  (testing "with import file update"
+    (is
+     (let [node {:text "  wowd"}]
+       (when-let [id (->ent-id node)]
+         (and (= (list {:text "really wowd" :update-type :append :file default-file})
+                 (map #(dissoc % :db/id)
+                      (sync/query-sync [{:id id :text "really wowd"}] default-file true)))
+              (= "really wowd" (:text (d/entity id))))))))
+  (testing "but not if no-text chars"
+    (is
+     (when-let [id (->ent-id {:text ""})]
+       (sync/query-sync [{:id id :text "  ---"}])
+       (= "" (:text (d/entity id)))))))
 
 (comment
   (sync/reset-sync!)

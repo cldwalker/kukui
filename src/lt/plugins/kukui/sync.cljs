@@ -166,7 +166,12 @@
   (db/init)
   (reset! last-edits {}))
 
-(def no-text "---")
+;; Query sync
+;; ==========
+
+(def no-text
+  "Text to indicate entity has no :text"
+  "---")
 
 (defn updated-ent-tx [ent]
   (let [orig (d/entity (:id ent))]
@@ -174,16 +179,25 @@
       []
       [{:db/id (:id ent) :text (:text ent)}])))
 
+(defn update-with-import-file [ents import-file import-file-exists?]
+  (if import-file-exists?
+    (map #(if (and (:line %) (:file %))
+            %
+            (assoc % :file import-file :update-type :append))
+         ents)
+    (filter #(and (:line %) (:file %)) ents)))
+
 (defn query-sync
   "Given a list of entities, updates them and returns a list of
   file, line and num maps to update."
-  [ents]
-  (let [tx (mapcat updated-ent-tx ents)]
-    (d/transact! tx)
-    (->> tx
-         (map (comp d/entity :db/id))
-         (filter #(and (:line %) (:file %)))
-         (map #(select-keys % [:line :file :text])))))
+  ([ents] (query-sync ents nil nil))
+  ([ents import-file import-file-exists?]
+   (let [tx (mapcat updated-ent-tx ents)]
+     (d/transact! tx)
+     (update-with-import-file
+      (map (comp d/entity :db/id) tx)
+      import-file
+      import-file-exists?))))
 
 (comment
   ;; diff

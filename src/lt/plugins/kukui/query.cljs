@@ -30,7 +30,7 @@
 
 (defn attr-node [attr ent level id->name]
   {:level (inc level)
-   :text (str "+ " attr ": "
+   :text (str "+ :" (name attr) ": "
               (if (= attr :tags)
                 (->> (attr ent)
                      (map id->name)
@@ -309,15 +309,23 @@
    :id (aget lh "kukui-id")
    :line (.lineNo lh)})
 
-(defn update-file-from-query-sync [path lines]
-  (let [content (s/split (:content (files/open-sync path)) #"\n")]
-    (s/join "\n"
-            (map-indexed
-             (fn [i line]
-               (if-let [new-line (some #(when (= i (:line %)) %) lines)]
-                 (str (re-find #"^\s*" line) (s/triml (:text new-line)))
-                 line))
-             content))))
+(defn update-file-from-query-sync [path lines tab-size]
+  (let [content (s/split-lines (:content (files/open-sync path)))
+        id->name (cset/map-invert (db/name-id-map))
+        append-body (kc/tree->string (mapcat #(ent->nodes % 1 id->name)
+                                             (keep #(when (= :append (:update-type %))
+                                                      (dissoc % :update-type))
+                                                   lines))
+                                     tab-size)]
+    (str (s/join "\n"
+                 (map-indexed
+                  (fn [i line]
+                    (if-let [new-line (some #(when (= i (:line %)) %) lines)]
+                      (str (re-find #"^\s*" line) (s/triml (:text new-line)))
+                      line))
+                  content))
+         (when (seq append-body)
+           (str "\n" append-body)))))
 
 (defn files-must-be-in-sync [ids]
   (let [files (set (keep (comp :file d/entity) ids))
@@ -329,21 +337,28 @@
       (prn "DIRTY" dirty)
       (throw (ex-info (str "Following files are dirty or not in an editor: " dirty) {})))))
 
+(def import-file
+  "File to save changes to imported entities. Temporary feature until imports are sorted out."
+  (files/join (files/lt-user-dir "plugins") "kukui" "urls.otl"))
+
 (defn query-sync []
   (let [ed (pool/last-active)
         lhs (ed->db-line-handles ed)
         ents (map lh->entity lhs)
         _ (files-must-be-in-sync (map :id ents))
-        lines-to-update (sync/query-sync ents)]
+        lines-to-update (sync/query-sync ents
+                                         import-file
+                                         (files/exists? import-file))]
+
     (doseq [[path lines] (group-by :file lines-to-update)]
-      (files/save path (update-file-from-query-sync path lines)))))
+      (files/save path (update-file-from-query-sync path lines (editor/option ed "tabSize"))))))
 
 (cmd/command {:command :kukui.query-sync
               :desc "kukui: Syncs query file to db"
               :exec query-sync})
 
 (comment
-  (def lines [{:line 6 :text "codez" :file "ok"}
+  (def lines [{:line 6 :text "codez" :file "ok" :type "note"}
               {:line 8 :text "  whatever" :file "ok"}])
   (def ids (map #(aget % "kukui-id") (ed->db-line-handles ed)))
   (d/entity 2096)
