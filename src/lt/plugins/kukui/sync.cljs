@@ -175,7 +175,7 @@
 
 (defn updated-ent-tx [ent]
   (let [orig (d/entity (:id ent))]
-    (if (contains? #{no-text (s/triml (:text orig))} (s/triml (:text ent)))
+    (if (contains? #{no-text (some-> (:text orig) s/triml)} (s/triml (:text ent)))
       []
       [{:db/id (:id ent) :text (:text ent)}])))
 
