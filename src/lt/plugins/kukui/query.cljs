@@ -309,20 +309,45 @@
    :id (aget lh "kukui-id")
    :line (.lineNo lh)})
 
+(defn dissoc-indices [coll indices]
+  (->> indices
+       (reduce
+        #(assoc %1 %2 nil)
+        coll)
+       (remove nil?)
+       vec))
+
+(defn ->next-non-child-line
+  "Alternative to c/safe-next-non-child-line which isn't dependent on
+  lines being in an editor."
+  [coll line]
+  (let [wspace #(count (re-find #"^\s*" %))
+        indent (wspace (nth coll line))
+        children (take-while #(> (wspace %) indent)
+                                    (subvec coll (inc line)))]
+    (+ line (count children) 1)))
+
 (defn update-file-from-query-sync [path lines tab-size]
-  (let [content (s/split-lines (:content (files/open-sync path)))
+  (let [old-lines (s/split-lines (:content (files/open-sync path)))
         id->name (cset/map-invert (db/name-id-map))
+        new-lines (reduce
+                   (fn [accum new-line]
+                     (assoc accum
+                       (:line new-line)
+                       (let [level (/ (count (re-find #"^\s*" (nth old-lines (:line new-line))))
+                                      tab-size)]
+                         (kc/tree->string (ent->nodes new-line (inc level) id->name) tab-size))))
+                   old-lines
+                   lines)
+        indices (mapcat #(range (inc (:line %)) (->next-non-child-line old-lines (:line %)))
+                        lines)
+        new-lines (dissoc-indices new-lines indices)
         append-body (kc/tree->string (mapcat #(ent->nodes % 1 id->name)
                                              (keep #(when (= :append (:update-type %))
                                                       (dissoc % :update-type))
                                                    lines))
                                      tab-size)]
-    (str (s/join "\n"
-                 (map-indexed
-                  (fn [i line]
-                    (if-let [new-line (some #(when (= i (:line %)) %) lines)]
-                      (:text new-line) line))
-                  content))
+    (str (s/join "\n" new-lines)
          (when (seq append-body)
            (str "\n" append-body)))))
 
@@ -333,7 +358,7 @@
     (when (seq not-ed-files)
       (prn "Unable to verify these files not in buffers:" not-ed-files))
     (when (seq dirty)
-      (prn "DIRTY" dirty)
+      (prn "DIRTY" (map #(get-in % [:info :path]) dirty))
       (throw (ex-info (str "Following files are dirty or not in an editor: " dirty) {})))))
 
 (def import-file
@@ -357,7 +382,6 @@
               :exec query-sync})
 
 (comment
-  (mapcat #(if (sequential? %) % [%]) (assoc [:a :b] 0 [:a :b]))
   (def lines [{:line 6 :text "codez" :file "ok" :type "note"}
               {:line 8 :text "  whatever" :file "ok"}])
   (def ids (map #(aget % "kukui-id") (ed->db-line-handles ed)))
