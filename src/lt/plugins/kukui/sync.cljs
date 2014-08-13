@@ -177,8 +177,12 @@
   (let [orig (d/entity (:id ent))
         changes (cond-> {}
                         (not (contains? #{no-text (some-> (:text orig) s/triml)} (s/triml (:text ent))))
-                        (assoc :text (str (re-find #"^\s*" (:text orig)) (s/triml (:text ent)))))
-        special-attrs #{:id :text :tags :file :indent :line}
+                        (assoc :text (str (re-find #"^\s*" (:text orig)) (s/triml (:text ent))))
+                        (not= (:desc orig) (:desc ent))
+                        ;; doesn't update :indent since we don't use it yet
+                        (assoc :desc (let [wspace (re-find #"^\s*" (get-in orig [:desc 0 :text]))]
+                                       (mapv #(assoc % :text (str wspace (s/triml (:text %)))) (:desc ent)))))
+        special-attrs #{:id :text :tags :file :indent :line :desc}
         changes (reduce
                  #(if (not= (%2 ent) (%2 orig))
                     (assoc %1 %2 (%2 ent))
@@ -203,6 +207,7 @@
   ([ents] (query-sync ents nil nil))
   ([ents import-file import-file-exists?]
    (let [tx (mapcat updated-ent-tx ents)]
+     (println "QUERY UPDATES:" (keep :text tx))
      (d/transact! tx)
      (update-with-import-file
       (map (comp d/entity :db/id) tx)

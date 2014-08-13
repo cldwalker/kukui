@@ -157,6 +157,15 @@
          (= (list (assoc node :url "http://giphy.com"))
           (map #(dissoc % :db/id)
            (sync/query-sync [{:id id :text (:text node) :url "http://giphy.com"}])))))))
+  (testing "updates desc and preserves whitespace"
+    (is
+     (let [node {:text "jetblue" :line 0 :file default-file :desc [{:text "  + decent leg room"}]}]
+       (when-let [id (->ent-id node)]
+         (= (list (assoc node :desc [{:text "  + no wifi ya bastards"}]))
+          (map #(dissoc % :db/id)
+               (sync/query-sync [{:id id
+                                  :text "  jetblue"
+                                  :desc [{:text "    + no wifi ya bastards"}]}])))))))
   (testing "but not if no-text chars"
     (is
      (when-let [id (->ent-id {:text ""})]
