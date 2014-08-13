@@ -329,6 +329,7 @@
 
 (defn update-file-from-query-sync [path lines tab-size]
   (let [old-lines (s/split-lines (:content (files/open-sync path)))
+        [append-lines lines] ((juxt filter remove) #(= :append (:update-type %)) lines)
         id->name (cset/map-invert (db/name-id-map))
         new-lines (reduce
                    (fn [accum new-line]
@@ -343,9 +344,7 @@
                         lines)
         new-lines (dissoc-indices new-lines indices)
         append-body (kc/tree->string (mapcat #(ent->nodes % 1 id->name)
-                                             (keep #(when (= :append (:update-type %))
-                                                      (dissoc % :update-type))
-                                                   lines))
+                                             (map #(dissoc % :update-type) append-lines))
                                      tab-size)]
     (str (s/join "\n" new-lines)
          (when (seq append-body)

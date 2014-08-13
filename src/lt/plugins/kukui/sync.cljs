@@ -185,7 +185,6 @@
                     %1)
                  changes
                  (cset/difference (set (keys ent)) special-attrs))]
-    (prn "CHANGES" changes)
     (if (seq changes)
       [(assoc changes :db/id (:id ent))]
       [])))
