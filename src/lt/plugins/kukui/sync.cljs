@@ -174,11 +174,21 @@
   "---")
 
 (defn updated-ent-tx [ent]
-  (let [orig (d/entity (:id ent))]
-    (if (contains? #{no-text (some-> (:text orig) s/triml)} (s/triml (:text ent)))
-      []
-      [{:db/id (:id ent)
-        :text (str (re-find #"^\s*" (:text orig)) (s/triml (:text ent)))}])))
+  (let [orig (d/entity (:id ent))
+        changes (cond-> {}
+                        (not (contains? #{no-text (some-> (:text orig) s/triml)} (s/triml (:text ent))))
+                        (assoc :text (str (re-find #"^\s*" (:text orig)) (s/triml (:text ent)))))
+        special-attrs #{:id :text :tags :file :indent :line}
+        changes (reduce
+                 #(if (not= (%2 ent) (%2 orig))
+                    (assoc %1 %2 (%2 ent))
+                    %1)
+                 changes
+                 (cset/difference (set (keys ent)) special-attrs))]
+    (prn "CHANGES" changes)
+    (if (seq changes)
+      [(assoc changes :db/id (:id ent))]
+      [])))
 
 (defn update-with-import-file [ents import-file import-file-exists?]
   (if import-file-exists?

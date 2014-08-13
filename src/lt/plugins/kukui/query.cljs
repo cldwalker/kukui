@@ -14,6 +14,7 @@
             [datascript :as ds]
             [lt.plugins.sacha.codemirror :as c]
             [lt.plugins.kukui.selector :as selector]
+            [lt.plugins.kukui.node :as node]
             [lt.plugins.kukui.db :as db]
             [lt.plugins.kukui.sync :as sync]
             [lt.plugins.kukui.util :as util]))
@@ -302,12 +303,11 @@
               :exec (fn []
                       (query-types-counts (pool/last-active)))})
 
-;; (let [line (.-line (editor/cursor ed))]
-;;       (prn (range line (c/safe-next-non-child-line ed line))))
-(defn lh->entity [lh]
-  {:text (.-text lh)
-   :id (aget lh "kukui-id")
-   :line (.lineNo lh)})
+(defn lh->entity [ed lh]
+  (let [line (.lineNo lh)
+        node (first
+              (node/ed->nodes ed (range line (c/safe-next-non-child-line ed line))))]
+    (assoc node :id (aget lh "kukui-id"))))
 
 (defn dissoc-indices [coll indices]
   (->> indices
@@ -368,7 +368,7 @@
 (defn query-sync []
   (let [ed (pool/last-active)
         lhs (ed->db-line-handles ed)
-        ents (map lh->entity lhs)
+        ents (map (partial lh->entity ed) lhs)
         _ (files-must-be-in-sync (map :id ents))
         lines-to-update (sync/query-sync ents
                                          import-file

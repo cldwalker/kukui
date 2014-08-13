@@ -150,6 +150,13 @@
          (= (list {:text "  really wowd" :update-type :append :file default-file})
             (map #(dissoc % :db/id)
                  (sync/query-sync [{:id id :text "really wowd"}] default-file true)))))))
+  (testing "updates desc attribute"
+    (is
+     (let [node {:text "oh the possibilities" :url "http://gifsound.com" :line 0 :file default-file}]
+       (when-let [id (->ent-id node)]
+         (= (list (assoc node :url "http://giphy.com"))
+          (map #(dissoc % :db/id)
+           (sync/query-sync [{:id id :text (:text node) :url "http://giphy.com"}])))))))
   (testing "but not if no-text chars"
     (is
      (when-let [id (->ent-id {:text ""})]
