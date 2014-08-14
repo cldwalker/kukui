@@ -127,46 +127,47 @@
 ;; Query sync
 
 (defn ->ent-id [m]
-  (d/transact! [m])
+  (d/transact! (->nodes [m] default-file))
   (:db/id (d/find-first :text (:text m))))
 
-(deftest query-sync-updates-text
-  (testing "without file update"
+(defn query-sync [& ents]
+  (map #(dissoc % :db/id :indent :tags)
+       (apply sync/query-sync ents)))
+
+(deftest query-sync-updates
+  (testing "text without file update"
     (is
-     (when-let [id (->ent-id {:text "  wow"})]
+     (d/transact! [{:text "  wow"}])
+     (when-let [id (:db/id (d/find-first :text "  wow"))]
        (and (empty? (sync/query-sync [{:id id :text "really wow"}]))
             (= "  really wow" (:text (d/entity id)))))))
-  (testing "with file update"
+  (testing "text with file update"
     (is
      (let [node {:text "  wowz" :line 0 :file default-file}]
        (when-let [id (->ent-id node)]
          (= (list (assoc node :text "  really wowz"))
-            (map #(dissoc % :db/id)
-                 (sync/query-sync [{:id id :text "really wowz"}])))))))
-  (testing "with import file update"
+            (query-sync [{:id id :text "really wowz"}]))))))
+  (testing "text with import file update"
     (is
      (let [node {:text "  wowd"}]
        (when-let [id (->ent-id node)]
          (= (list {:text "  really wowd" :update-type :append :file default-file})
-            (map #(dissoc % :db/id)
-                 (sync/query-sync [{:id id :text "really wowd"}] default-file true)))))))
-  (testing "updates desc attribute"
+            (query-sync [{:id id :text "really wowd"}] default-file true))))))
+  (testing "desc attribute"
     (is
      (let [node {:text "oh the possibilities" :url "http://gifsound.com" :line 0 :file default-file}]
        (when-let [id (->ent-id node)]
          (= (list (assoc node :url "http://giphy.com"))
-          (map #(dissoc % :db/id)
-           (sync/query-sync [{:id id :text (:text node) :url "http://giphy.com"}])))))))
-  (testing "updates desc and preserves whitespace"
+            (query-sync [{:id id :text (:text node) :url "http://giphy.com"}]))))))
+  (testing "desc and preserves whitespace"
     (is
      (let [node {:text "jetblue" :line 0 :file default-file :desc [{:text "  + decent leg room"}]}]
        (when-let [id (->ent-id node)]
          (= (list (assoc node :desc [{:text "  + no wifi ya bastards"}]))
-          (map #(dissoc % :db/id)
-               (sync/query-sync [{:id id
+            (query-sync [{:id id
                                   :text "  jetblue"
-                                  :desc [{:text "    + no wifi ya bastards"}]}])))))))
-  (testing "but not if no-text chars"
+                                  :desc [{:text "    + no wifi ya bastards"}]}]))))))
+  (testing "except if no-text chars"
     (is
      (when-let [id (->ent-id {:text ""})]
        (sync/query-sync [{:id id :text "  ---"}])
