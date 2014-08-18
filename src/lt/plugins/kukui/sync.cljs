@@ -179,10 +179,12 @@
         changes (cond-> {}
                         (not (contains? #{no-text (some-> (:text orig) s/triml)} (s/triml (:text ent))))
                         (assoc :text (str (re-find #"^\s*" (:text orig)) (s/triml (:text ent))))
-                        (not= (:desc orig) (:desc ent))
+                        (not= (map (comp s/triml :text) (:desc orig))
+                              (map (comp s/triml :text) (:desc ent)))
                         ;; doesn't update :indent since we don't use it yet
                         (assoc :desc (let [wspace (re-find #"^\s*" (get-in orig [:desc 0 :text]))]
-                                       (mapv #(assoc % :text (str wspace (s/triml (:text %)))) (:desc ent)))))
+                                       (mapv #(assoc %1 :text (str wspace (s/triml (:text %2))))
+                                             (:desc orig) (:desc ent)))))
         special-attrs #{:id :text :tags :file :indent :line :desc}
         changes (reduce
                  #(if (not= (%2 ent) (%2 orig))
@@ -190,6 +192,7 @@
                     %1)
                  changes
                  (cset/difference (set (keys ent)) special-attrs))]
+    ;; (prn "CHANGES" changes)
     (if (seq changes)
       (concat
        [(assoc changes :db/id (:id ent))]
@@ -223,6 +226,8 @@
                     (map (fn [[tag id]]
                            {:db/id id :name tag :type db/unknown-type})
                          @new-tags))]
+     ;; (prn "ENTS" ents)
+     ;; (prn "TX" tx)
      (d/transact! tx)
      (update-with-import-file
       (->> tx
