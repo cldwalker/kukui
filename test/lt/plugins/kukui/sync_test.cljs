@@ -127,7 +127,7 @@
 ;; Query sync
 
 (defn ->ent-id [m]
-  (d/transact! (->nodes [m] default-file))
+  (d/transact! (sync/expand-tags (->nodes [m] default-file)))
   (:db/id (d/find-first :text (:text m))))
 
 (defn query-sync [& ents]
@@ -153,6 +153,15 @@
        (when-let [id (->ent-id node)]
          (= (list {:text "  really wowd" :update-type :append :file default-file})
             (query-sync [{:id id :text "really wowd"}] default-file true))))))
+  (testing "text and tags"
+    (is
+     (when-let [id (->ent-id {:text "this #is #awesome" :line 0 :file default-file})]
+       (and
+        (= (list {:line 0 :file default-file :text "this #was #awesome"})
+           (query-sync [{:id id :text "this #was #awesome" :tags #{"was" "awesome"}}]
+                       default-file true))
+        (= #{"was" "awesome"}
+           (->> (d/entity id) :tags (map (comp :name d/entity)) set))))))
   (testing "desc attribute"
     (is
      (let [node {:text "oh the possibilities" :url "http://gifsound.com" :line 0 :file default-file}]
@@ -179,6 +188,9 @@
   (sync/sync [{:text "whoop" :type "td"}] "/ok/path")
   (d/qe '[:find ?e
           :where [?e]])
+  (d/transact! [{:db/id 3 :tags [2]}])
+  (d/entity 3)
+  (d/transact! [[:db/retract 3 :tags 2]])
   (-> @sync/last-edits vals first)
   (reset! sync/last-edits {})
   (-> @d/reports last :tx-data (filter))

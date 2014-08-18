@@ -173,8 +173,9 @@
   "Text to indicate entity has no :text"
   "---")
 
-(defn updated-ent-tx [ent]
+(defn updated-ent-tx [new-tags ent]
   (let [orig (d/entity (:id ent))
+        orig (update-in orig [:tags] #(set (map (comp :name d/entity) %)))
         changes (cond-> {}
                         (not (contains? #{no-text (some-> (:text orig) s/triml)} (s/triml (:text ent))))
                         (assoc :text (str (re-find #"^\s*" (:text orig)) (s/triml (:text ent))))
@@ -190,7 +191,16 @@
                  changes
                  (cset/difference (set (keys ent)) special-attrs))]
     (if (seq changes)
-      [(assoc changes :db/id (:id ent))]
+      (concat
+       [(assoc changes :db/id (:id ent))]
+       (let [remove-tags (cset/difference (:tags orig) (:tags ent))
+             add-tags (cset/difference (:tags ent) (:tags orig))
+             name->id (db/name-id-map)
+             tag-id (partial ->tag-id [] name->id new-tags)]
+         (concat
+          (map #(hash-map :db/id (:id ent) :tags (tag-id %)) add-tags)
+
+          (map #(vector :db/retract (:id ent) :tags (get name->id %)) remove-tags))))
       [])))
 
 (defn update-with-import-file [ents import-file import-file-exists?]
@@ -206,11 +216,21 @@
   file, line and num maps to update."
   ([ents] (query-sync ents nil nil))
   ([ents import-file import-file-exists?]
-   (let [tx (mapcat updated-ent-tx ents)]
-     (println "QUERY UPDATES:" (keep :text tx))
+   (let [new-tags (atom {})
+         tx (doall
+             (mapcat (partial updated-ent-tx new-tags) ents))
+         tx (concat tx
+                    (map (fn [[tag id]]
+                           {:db/id id :name tag :type db/unknown-type})
+                         @new-tags))]
      (d/transact! tx)
      (update-with-import-file
-      (map (comp d/entity :db/id) tx)
+      (->> tx
+           ;; remove deleted + updated tx
+           (filter #(some-> % :db/id pos?))
+           (map :db/id)
+           distinct
+           (map d/entity))
       import-file
       import-file-exists?))))
 
