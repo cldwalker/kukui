@@ -193,18 +193,18 @@
                  changes
                  (cset/difference (set (keys ent)) special-attrs))]
     ;; (prn "CHANGES" changes)
-    (if (seq changes)
-      (concat
-       [(assoc changes :db/id (:id ent))]
+    (concat
+     (when (seq changes)
+       [(assoc changes :db/id (:id ent))])
+     (when (not= (:tags orig) (:tags ent))
        (let [remove-tags (cset/difference (:tags orig) (:tags ent))
-             add-tags (cset/difference (:tags ent) (:tags orig))
-             name->id (db/name-id-map)
-             tag-id (partial ->tag-id [] name->id new-tags)]
-         (concat
-          (map #(hash-map :db/id (:id ent) :tags (tag-id %)) add-tags)
+              add-tags (cset/difference (:tags ent) (:tags orig))
+              name->id (db/name-id-map)
+              tag-id (partial ->tag-id [] name->id new-tags)]
+          (concat
+           (map #(hash-map :db/id (:id ent) :tags (tag-id %)) add-tags)
 
-          (map #(vector :db/retract (:id ent) :tags (get name->id %)) remove-tags))))
-      [])))
+           (map #(vector :db/retract (:id ent) :tags (get name->id %)) remove-tags)))))))
 
 (defn update-with-import-file [ents import-file import-file-exists?]
   (if import-file-exists?
