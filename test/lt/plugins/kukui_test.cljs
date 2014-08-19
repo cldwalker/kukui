@@ -52,6 +52,11 @@
              :tags #{"p0" "?" "periodic"}
              :desc [(nth nodes 4)])]
           (k/add-attributes-to-nodes nodes)))))
+  (testing "tags delimiter to avoid inclusion in :text"
+    (is
+     (let [nodes (->nodes ["this is #amazing ;; #type:note #late"])]
+       (= [(assoc (nth nodes 0) :text "this is #amazing" :type "note" :tags #{"amazing" "late"})]
+          (k/add-attributes-to-nodes nodes)))))
   (testing "attribute tags - normal and attribute inheritence -
     children overrides its parents for a given attribute"
     (is

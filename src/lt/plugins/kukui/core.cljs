@@ -7,6 +7,7 @@
 (def tag-prefix "#")
 (def attr-delimiter ":")
 (def name-attr "name")
+(def tags-delimiter ";;")
 
 ;; This regex returns pairs of matches but only the latter is useful. This
 ;; is a necessary evil caused by no negative-lookbehind in JS
@@ -58,8 +59,13 @@
     (and (> (:indent next) (:indent curr))
          (not (desc-node? next)))))
 
+(def text-regex (re-pattern (str "\\s*" tags-delimiter "\\s*")))
+
+(defn ->text-value [text]
+  (-> text (s/split text-regex) first))
+
 (defn add-node-with-tags [nodes node tags]
-  (conj nodes (assoc node :tags (set tags))))
+  (conj nodes (assoc node :text (->text-value (:text node)) :tags (set tags))))
 
 (defn add-node-with-parent-tags [nodes curr parent-tags]
   (add-node-with-tags
