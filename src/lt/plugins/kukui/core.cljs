@@ -62,7 +62,7 @@
 (def text-regex (re-pattern (str "\\s*" tags-delimiter "\\s*")))
 
 (defn ->text-value [text]
-  (-> text (s/split text-regex) first))
+  (-> text (s/split text-regex) first (or "")))
 
 (defn add-node-with-tags [nodes node tags]
   (conj nodes (assoc node :text (->text-value (:text node)) :tags (set tags))))
