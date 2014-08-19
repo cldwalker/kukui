@@ -327,22 +327,51 @@
                                     (subvec coll (inc line)))]
     (+ line (count children) 1)))
 
+(defn node-lines-must-be-equal
+  "If more than one node alters line equality, updates are borked"
+  [old-line old-count new-count]
+  (when (not= old-count new-count)
+    (prn (str "Expected " old-count " lines but new count is " new-count
+                         " for:" old-line))
+    (throw (ex-info (str "Expected " old-count " lines but new count is " new-count
+                         " for:" old-line)
+                    {}))))
+
+;; consider handling other attributes
+(defn ->shortened-node
+  "Produce condensed nodes with tag and type info in tags-delimited format"
+  [new-line]
+  (str (:text new-line)
+       " " kc/tags-delimiter " "
+       kc/tag-prefix "type" kc/attr-delimiter (:type new-line) " "
+       (s/join " " (map #(str kc/tag-prefix (:name (d/entity %))) (:tags new-line)))))
+
 (defn update-file-from-query-sync [path lines tab-size]
   (let [old-lines (s/split-lines (:content (files/open-sync path)))
         [append-lines lines] ((juxt filter remove) #(= :append (:update-type %)) lines)
         id->name (cset/map-invert (db/name-id-map))
+        indices (into {}
+                      (map #(vector
+                             (:line %)
+                             (range (inc (:line %)) (->next-non-child-line old-lines (:line %))))
+                           lines))
         new-lines (reduce
                    (fn [accum new-line]
                      (assoc accum
                        (:line new-line)
-                       (let [level (/ (count (re-find #"^\s*" (nth old-lines (:line new-line))))
-                                      tab-size)]
-                         (kc/tree->string (ent->nodes new-line (inc level) id->name) tab-size))))
+                       (let [old-count (inc (count (get indices (:line new-line))))]
+                         (if (and (empty? (:desc new-line)) (= 1 old-count))
+                           (->shortened-node new-line)
+                           (let [level (/ (count (re-find #"^\s*" (nth old-lines (:line new-line))))
+                                          tab-size)
+                                 new-node (kc/tree->string (ent->nodes new-line (inc level) id->name) tab-size)]
+                             (node-lines-must-be-equal (:text new-line)
+                                                       old-count
+                                                       (count (s/split-lines new-node)))
+                             new-node)))))
                    old-lines
                    lines)
-        indices (mapcat #(range (inc (:line %)) (->next-non-child-line old-lines (:line %)))
-                        lines)
-        new-lines (dissoc-indices new-lines indices)
+        new-lines (dissoc-indices new-lines (mapcat val indices))
         append-body (kc/tree->string (mapcat #(ent->nodes % 1 id->name)
                                              (map #(dissoc % :update-type) append-lines))
                                      tab-size)]
