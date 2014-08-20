@@ -70,11 +70,12 @@
 
           ;; update existing named thing
           (when-let [existing (get name-entities (:name node))]
-            (not= (dissoc existing :db/id) (dissoc node :tags)))
+            ;; Can't compare tags b/c new nodes are usually empty for imported ents
+            (not= (dissoc (select-keys existing (keys node)) :tags) (dissoc node :tags)))
           (update-in accum [:updated] (fnil conj [])
-                     (-> node
-                         (dissoc :tags)
-                         (assoc :db/id (:db/id (get name-entities (:name node))))))
+                       (-> node
+                           (dissoc :tags)
+                           (assoc :db/id (:db/id (get name-entities (:name node))))))
 
           ;; could be updated text
           (nil? old-node)
