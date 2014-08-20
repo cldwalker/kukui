@@ -232,10 +232,19 @@
               :exec (partial current-word-query "[?e :type \"%s\"]")})
 
 (cmd/command {:command :kukui.open-regex-search
-              :desc "kukui: Opens current word as regex search"
+              :desc "kukui: Opens current word as regex search on any field"
               :exec (fn []
                       (let [ed (pool/last-active)]
                         (current-word-query "(search-all-attr #fn re-find #\"%s\")")
+                        (object/raise find/bar
+                                      :search!
+                                      (current-word ed))))})
+
+(cmd/command {:command :kukui.open-regex-name-search
+              :desc "kukui: Opens current word as regex search on :name field"
+              :exec (fn []
+                      (let [ed (pool/last-active)]
+                        (current-word-query "(search-attr #fn re-find :name #\"%s\")")
                         (object/raise find/bar
                                       :search!
                                       (current-word ed))))})
