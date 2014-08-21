@@ -109,6 +109,14 @@
     (is (= "person"
            (:type (d/entity (:db/id existing)))))))
 
+(deftest url-entity-updates-type
+  (sync [{:text "nice tabs #type:note #url:youtab.me" :line 0}])
+  (let [existing (d/find-first :url "youtab.me")]
+    (sync [{:text "nice tabs #type:note #url:youtab.me" :line 0}
+           {:text "#url:youtab.me #type:wapp" :line 1}])
+    (is (= "wapp"
+           (:type (d/entity (:db/id existing)))))))
+
 (deftest update-same-line-when-multiple-files
   (sync [{:text "file 1 #type:td" :line 0}])
   (sync/sync (->nodes [{:text "file 2 #type:td" :line 0}] "/another/path") "/another/path")

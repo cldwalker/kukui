@@ -56,12 +56,17 @@
             (assoc % :db/id (get line-entities (:line %))))
          nodes)))
 
+(defn update-node [accum node id]
+  (update-in accum [:updated] (fnil conj [])
+             (-> node
+                 (dissoc :tags)
+                 (assoc :db/id id))))
+
 (defn node-diff* [nodes1 nodes2]
   (let [old-nodes (into {} (map (juxt :text identity) nodes1))
         ;; Pulling names from nodes1 has too many edge cases - just use existing
-        name-entities (->> (db/name-id-map)
-                           (map (fn [[name id]] [name (d/entity id)]))
-                           (into {} ))
+        name-ids (db/name-id-map)
+        url-ids (into {} (d/q ('url-ents db/named-queries)))
         changes {:deleted (cset/difference (set nodes1) (set nodes2))}]
     (reduce
      (fn [accum node]
@@ -69,13 +74,16 @@
          (cond
 
           ;; update existing named thing
-          (when-let [existing (get name-entities (:name node))]
+          (when-let [existing (some-> (get name-ids (:name node)) d/entity)]
             ;; Can't compare tags b/c new nodes are usually empty for imported ents
             (not= (dissoc (select-keys existing (keys node)) :tags) (dissoc node :tags)))
-          (update-in accum [:updated] (fnil conj [])
-                       (-> node
-                           (dissoc :tags)
-                           (assoc :db/id (:db/id (get name-entities (:name node))))))
+          (update-node accum node (get name-ids (:name node)))
+
+          ;; update existing url thing
+          (when-let [existing (some-> (get url-ids (:url node)) d/entity)]
+            ;; Can't compare tags b/c new nodes are usually empty for imported ents
+            (not= (dissoc (select-keys existing (keys node)) :tags) (dissoc node :tags)))
+          (update-node accum node (get url-ids (:url node)))
 
           ;; could be updated text
           (nil? old-node)
