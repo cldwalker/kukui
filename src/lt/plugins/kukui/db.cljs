@@ -61,6 +61,8 @@
                    (tagged-ent-with ?e ?t1 ?tag1) (tagged-with ?t1 ?tag2)]
    'named-ents '[:find ?n ?e
                  :where [?e :name ?n]]
+   'url-ents '[:find ?url ?e
+               :where [?e :url ?url]]
    'ent-by-tags '[:find ?tag ?e
                   :in $ % ?input-tag
                   :where (tagged-with ?e ?input-tag) (tagged-with ?e ?tag)]
@@ -265,6 +267,29 @@
       (throw (ex-info (str "Type must be present")
                       {:invalid invalid})))
     entities))
+
+(defn must-have-unique-url [entities]
+  (let [existing-urls (into {} (d/q ('url-ents named-queries)))
+        urls (set (keys existing-urls))
+        invalid (filter #(and (:url %) (contains? urls (:url %))) entities)
+        invalid (->> entities
+                     (filter :url)
+                     (group-by :url)
+                     vals
+                     (mapcat #(when (> (count %) 1) %))
+                     (into invalid))]
+    (when (seq invalid)
+      (prn "INVALID" invalid)
+      (throw (ex-info (str "Urls must be unique: " (map :url invalid))
+                      {:urls (map :url invalid)})))
+    entities))
+
+(defn validate [entities]
+  (-> entities
+      must-have-unique-name
+      must-have-string-name
+      must-require-type
+      must-have-unique-url))
 
 ;; Misc
 ;; ====

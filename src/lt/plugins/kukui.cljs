@@ -204,9 +204,7 @@
         entities (map (partial ->ent ->id id->name updated-names) things)]
     (println "Saving" (count entities) "entities," (count (mapcat :tags entities)) "tags...")
     (-> entities
-        db/must-have-unique-name
-        db/must-have-string-name
-        db/must-require-type
+        db/validate
         d/transact!)))
 
 (cmd/command {:command :kukui.import-semtag-data

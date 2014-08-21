@@ -115,11 +115,7 @@
                               #(or (integer? (:tags %))
                                    (seq (:tags %)))
                               (-> nodes add-types expand-tags))]
-    (into (-> ents
-              db/must-have-unique-name
-              db/must-have-string-name
-              ensure-type
-              db/must-require-type)
+    (into (db/validate (ensure-type ents))
           relationships)))
 
 (defn must-have-ids [entities]
