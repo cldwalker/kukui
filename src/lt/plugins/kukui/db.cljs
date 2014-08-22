@@ -19,7 +19,7 @@
      [?e :tags ?tag]
      [?tag :name ?name]]
     ;; Allow untagged entities to match
-    [(tag-names ?e ?name)]])
+    [(tag-names _ _)]])
 
 (def tagged-with-rule
   '[[(tagged-with ?e ?name)
@@ -58,7 +58,7 @@
    'tagged-tags  '[:find ?tag1 ?tag2
                    :in $ %
                    :where
-                   (tagged-ent-with ?e ?t1 ?tag1) (tagged-with ?t1 ?tag2)]
+                   (tagged-ent-with _ ?t1 ?tag1) (tagged-with ?t1 ?tag2)]
    'named-ents '[:find ?n ?e
                  :where [?e :name ?n]]
    'url-ents '[:find ?url ?e
