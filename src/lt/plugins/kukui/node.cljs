@@ -12,16 +12,16 @@
 
 (def ignore-tag "ignore")
 
-(defn ->tagged-nodes
-  "Returns nodes with :line, :indent, :text and :tags properties.
-  Tags are picked up from parents and any words starting with '#'."
-  [ed lines]
-  (let [nodes (->> lines
-                   (map #(line->node ed %))
-                   add-attributes-to-nodes)]
-    (remove #(contains? (:tags %) ignore-tag) nodes)))
+(defn expand-nodes
+  "Adds :tags, :desc and attributes to nodes. Also respects ignore-tag"
+  [nodes]
+  (->> nodes
+       add-attributes-to-nodes
+       (remove #(contains? (:tags %) ignore-tag))))
 
 (defn ed->nodes
+  "Returns nodes with :line, :indent, :text and :tags properties.
+  Tags are picked up from parents and any words starting with '#'."
   ([ed] (ed->nodes ed nil))
   ([ed lines]
    (let [lines (or lines
@@ -30,4 +30,4 @@
                             (inc (get-in selection [:to :line])))
                      (let [line (.-line (editor/cursor ed))]
                        (range line (c/safe-next-non-child-line ed line)))))]
-     (->tagged-nodes ed lines))))
+     (expand-nodes (map #(line->node ed %) lines)))))

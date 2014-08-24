@@ -129,6 +129,25 @@
                                          (util/current-lines ed))))})
 ;; DB commands
 ;; ===========
+(defn sync-nodes [nodes file]
+  (try
+    (sync/sync nodes file)
+    (catch :default e
+      (notifos/set-msg! (str "Failed to sync:" e) {:class "error"})
+      (prn e (ex-data e))
+      (println (.-stack e)))))
+
+(defn file->nodes
+  "Alternative to node/ed->nodes which just uses file"
+  [file]
+  (->> (s/split-lines (:content (files/open-sync file)))
+       (map-indexed (fn [i line]
+                      {:line i
+                       :indent (count (re-find #"^\s*" line))
+                       :text line
+                       :file file}))
+       node/expand-nodes))
+
 (cmd/command {:command :kukui.sync-file-to-db
               :desc "kukui: Syncs file to db"
               :exec (fn []
@@ -137,13 +156,7 @@
                                          (inc (editor/last-line ed)))
                             nodes (node/ed->nodes ed lines)
                             file (util/current-file ed)]
-                        (def nodes nodes)
-                        (try
-                          (sync/sync nodes file)
-                          (catch :default e
-                            (notifos/set-msg! (str "Failed to sync:" e) {:class "error"})
-                            (prn e (ex-data e))
-                            (println (.-stack e))))))})
+                        (sync-nodes nodes file)))})
 
 (def entity-selector
   (selector/selector {:items (fn []
