@@ -232,6 +232,20 @@
                         (import-semtag-data))
                       (notifos/set-msg! "Reset!"))})
 
+(cmd/command {:command :kukui.reset-sync-and-sync-all
+              :desc "kukui: Resets sync and syncs all files in notes"
+              :exec (fn []
+                      (sync/reset-sync!)
+                      (when (files/exists? (files/join (files/lt-user-dir "plugins") "kukui" "db.clj"))
+                        (import-semtag-data))
+                      (let [notes-dir (files/join (files/lt-user-dir "plugins") "kukui" "notes")]
+                        (when (files/exists? notes-dir)
+                          (doseq [file (files/full-path-ls notes-dir)]
+                            (let [file (.readlinkSync (js/require "fs") file)]
+                              (println "Syncing file" file "...")
+                              (sync-nodes (file->nodes file) file)))))
+                      (notifos/set-msg! "Reset!"))})
+
 (comment
   (def ents (d/qf '[:find ?name :where [?e :type "type"] [?e :name ?name]]))
   (def names (d/qf '[:find ?name :where [?e :type ?name]]))
