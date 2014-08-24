@@ -57,6 +57,9 @@
          nodes)))
 
 (defn update-node [accum node id]
+  (let [old-type (:type (d/entity id))]
+    (when (not= old-type (:type node))
+    (println "Updating type" old-type "->" (:type node) "for: " node)))
   (update-in accum [:updated] (fnil conj [])
              (-> node
                  (dissoc :tags)
