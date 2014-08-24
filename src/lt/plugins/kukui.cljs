@@ -241,6 +241,7 @@
                       (let [notes-dir (files/join (files/lt-user-dir "plugins") "kukui" "notes")]
                         (when (files/exists? notes-dir)
                           (doseq [file (files/full-path-ls notes-dir)]
+                            ;; Assume symlinks for now. Use .lstatSync if mixed symlinks and real paths desired
                             (let [file (.readlinkSync (js/require "fs") file)]
                               (println "Syncing file" file "...")
                               (sync-nodes (file->nodes file) file)))))
