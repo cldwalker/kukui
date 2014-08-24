@@ -201,8 +201,8 @@
   "Returns current word given string and cursor position in string"
   [string cursor]
   (str
-   (re-find #"[^#\s:()\"]+$" (subs string 0 cursor))
-   (re-find #"^[^\s:()\"]+" (subs string cursor))))
+   (re-find #"[^#\s:,()\"]+$" (subs string 0 cursor))
+   (re-find #"^[^\s:,()\"]+" (subs string cursor))))
 
 (defn current-word
   "Current word under cursor"
