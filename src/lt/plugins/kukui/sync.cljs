@@ -5,6 +5,10 @@
             [clojure.string :as s]
             [clojure.set :as cset]))
 
+(def no-text
+  "Text to indicate entity has no :text"
+  "---")
+
 (defn ->tag-id
   "Given a tag name and a number of data structures it could be in,
   return an existing or new :db/id for it"
@@ -92,7 +96,8 @@
           (nil? old-node)
           (update-in accum [:added] (fnil conj []) node)
 
-          (not= (:line old-node) (:line node))
+          ;; TODO: Avoid causing endless updates whenever two nodes have exact :text
+          (and (not= (s/trim (:text node)) no-text) (not= (:line old-node) (:line node)))
           (-> accum
               (update-in [:updated] (fnil conj [])
                          {:line (:line old-node)
@@ -176,10 +181,6 @@
 
 ;; Query sync
 ;; ==========
-
-(def no-text
-  "Text to indicate entity has no :text"
-  "---")
 
 (defn updated-ent-tx [new-tags ent]
   (let [orig (d/entity (:id ent))
