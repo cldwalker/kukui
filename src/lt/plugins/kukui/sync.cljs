@@ -69,7 +69,19 @@
                  (dissoc :tags)
                  (assoc :db/id id))))
 
+(defn nodes-must-not-have-text-dupes [nodes]
+  (let [->dupes (fn [values]
+                  (->> values
+                       (group-by identity)
+                       (filter #(< 1 (count (val %))))
+                       keys))
+        dupes (remove #(= no-text (s/triml %))
+                      (->dupes (map :text nodes)))]
+    (when (seq dupes)
+      (throw (ex-info (str "Unexpected :text dupes in previous nodes:" dupes) {})))))
+
 (defn node-diff* [nodes1 nodes2]
+  (nodes-must-not-have-text-dupes nodes1)
   (let [old-nodes (into {} (map (juxt :text identity) nodes1))
         ;; Pulling names from nodes1 has too many edge cases - just use existing
         name-ids (db/name-id-map)
@@ -96,7 +108,6 @@
           (nil? old-node)
           (update-in accum [:added] (fnil conj []) node)
 
-          ;; TODO: Avoid causing endless updates whenever two nodes have exact :text
           (and (not= (s/trim (:text node)) no-text) (not= (:line old-node) (:line node)))
           (-> accum
               (update-in [:updated] (fnil conj [])
