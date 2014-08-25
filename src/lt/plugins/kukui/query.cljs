@@ -400,7 +400,7 @@
 
 (def import-file
   "File to save changes to imported entities. Temporary feature until imports are sorted out."
-  (files/join (files/lt-user-dir "plugins") "kukui" "urls.otl"))
+  (files/join (files/lt-user-dir "plugins") "kukui" "notes" "urls.otl"))
 
 (defn query-sync []
   (let [ed (pool/last-active)
