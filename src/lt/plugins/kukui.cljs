@@ -235,6 +235,7 @@
 (cmd/command {:command :kukui.reset-sync-and-sync-all
               :desc "kukui: Resets sync and syncs all files in notes"
               :exec (fn []
+                      (notifos/working "Resetting")
                       (sync/reset-sync!)
                       (when (files/exists? (files/join (files/lt-user-dir "plugins") "kukui" "db.clj"))
                         (import-semtag-data))
@@ -242,10 +243,17 @@
                         (when (files/exists? notes-dir)
                           (doseq [file (files/full-path-ls notes-dir)]
                             ;; Assume symlinks for now. Use .lstatSync if mixed symlinks and real paths desired
-                            (let [file (.readlinkSync (js/require "fs") file)]
-                              (println "Syncing file" file "...")
-                              (sync-nodes (file->nodes file) file)))))
-                      (notifos/set-msg! "Reset!"))})
+                            (let [path (.readlinkSync (js/require "fs") file)]
+                              (if (files/dir? path)
+                                (do
+                                  (println "Syncing directory" path "...")
+                                  (doseq [file (files/full-path-ls path)]
+                                    (println "Syncing file" file "...")
+                                    (sync-nodes (file->nodes file) file)))
+                                (do
+                                  (println "Syncing file" path "...")
+                                  (sync-nodes (file->nodes path) path)))))))
+                      (notifos/done-working "Reset!"))})
 
 (comment
   (def ents (d/qf '[:find ?name :where [?e :type "type"] [?e :name ?name]]))

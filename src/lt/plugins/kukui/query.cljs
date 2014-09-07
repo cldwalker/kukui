@@ -434,6 +434,12 @@
 
   (def path (:path (last @query-history)))
   (def ed (first (pool/by-path path)))
+  (def ed2 (second (pool/by-path path)))
+  (.unlinkDoc (-> @ed2 :doc deref :doc) (-> @ed :doc deref :doc))
+  (.iterLinkedDocs (-> @ed :doc deref :doc)
+                   (fn [sub-doc] (.log js/console sub-doc)))
+  (-> @ed :doc deref :sub-docs)
+
   (:dirty @ed)
   (-> @ed :doc deref :doc .getValue (s/split #"\n"))
   )
