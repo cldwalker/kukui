@@ -159,7 +159,9 @@
                                           path (input->path ed query)]
                                       (util/jump-to ed path)
                                       add-ids-to-query-file))
-                                  :placeholder "query"))})
+                                  :placeholder "query"
+                                  :completions (map #(str "(" %)
+                                                    (sort (keys db/named-queries)))))})
 
 (def type-selector
   (selector/selector {:items (fn []

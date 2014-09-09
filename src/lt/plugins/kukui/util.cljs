@@ -131,7 +131,7 @@
                  {:line line :ch 0})))
 
 (defui text-input [m]
-  [:input {:type "text" :placeholder (:placeholder m)}]
+  [:input {:type "text" :placeholder (:placeholder m) :autocomplete "on" :list "input-completions"}]
   :focus (fn []
            (ctx/in! :popup.input))
   :blur (fn []
@@ -140,7 +140,10 @@
 (defn input [action-fn & {:as opts}]
   (let [input (text-input opts)
         p (popup/popup! {:header  (or (:header opts) "Enter value")
-                         :body input
+                         :body [:div
+                                [:datalist#input-completions
+                                 (map #(vec [:option {:value %} ]) (:completions opts))]
+                                input]
                          :buttons [{:label "Cancel"}
                                    {:label "Submit"
                                     :action (fn []
