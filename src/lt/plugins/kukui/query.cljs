@@ -151,6 +151,16 @@
                         (util/jump-to ed path)
                         (add-ids-to-query-file)))})
 
+(cmd/command {:command :kukui.input-query-and-open-file
+              :desc "kukui: Opens input for query and returns results as a temp file outline"
+              :exec (fn []
+                      (util/input (fn [query]
+                                    (let [ed (pool/last-active)
+                                          path (input->path ed query)]
+                                      (util/jump-to ed path)
+                                      add-ids-to-query-file))
+                                  :placeholder "query"))})
+
 (def type-selector
   (selector/selector {:items (fn []
                                (let [ed (pool/last-active)]

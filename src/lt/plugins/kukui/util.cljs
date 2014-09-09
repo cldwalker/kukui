@@ -7,7 +7,11 @@
             [lt.objs.jump-stack :as jump-stack]
             [lt.object :as object]
             [clojure.string :as s]
-            [lt.plugins.sacha.codemirror :as c]))
+            [lt.plugins.sacha.codemirror :as c]
+            [lt.objs.context :as ctx]
+            [lt.objs.popup :as popup]
+            [lt.util.dom :as dom])
+  (:require-macros [lt.macros :refer [defui]]))
 
 (defn insert-at-next-line
   "Insert string at the beginning of the next line"
@@ -125,6 +129,24 @@
                  ed
                  path
                  {:line line :ch 0})))
+
+(defui text-input [m]
+  [:input {:type "text" :placeholder (:placeholder m)}]
+  :focus (fn []
+           (ctx/in! :popup.input))
+  :blur (fn []
+          (ctx/out! :popup.input)))
+
+(defn input [action-fn & {:as opts}]
+  (let [input (text-input opts)
+        p (popup/popup! {:header  (or (:header opts) "Enter value")
+                         :body input
+                         :buttons [{:label "Cancel"}
+                                   {:label "Submit"
+                                    :action (fn []
+                                              (action-fn (dom/val input)))}]})]
+    (dom/focus input)
+    (.setSelectionRange input 1000 1000)))
 
 (comment
   (def ed (first (pool/containing-path "db.cljs")))
