@@ -106,8 +106,18 @@
     (when-let [query (named-query db/named-queries)]
       (into [query] args))))
 
+(def query-aliases {'search "search-all-attr #fn re-find"
+                    'ebt "ent-by-type"})
+
+(defn aliased-query [input]
+  (let [input-dt (reader/read-string input)
+        expansion (get query-aliases (first input-dt))]
+    (when (and (seq? input-dt) expansion)
+      (s/replace-first input #"^\s*\(\S+" (str "(" expansion)))))
+
 (defn input->query-and-args [input]
-  (let [named-query-args (fn-string->query-args input)]
+  (let [input (or (aliased-query input) input)
+        named-query-args (fn-string->query-args input)]
     (cond
      named-query-args named-query-args
      ;; Full query detected
