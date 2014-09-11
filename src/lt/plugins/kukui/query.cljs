@@ -170,8 +170,10 @@
                                       (util/jump-to ed path)
                                       add-ids-to-query-file))
                                   :placeholder "query"
-                                  :completions (map #(str "(" %)
-                                                    (sort (keys db/named-queries)))))})
+                                  :completions (sort
+                                                (concat (map :input @query-history)
+                                                        (map #(str "(" %) (concat (keys query-aliases)
+                                                                                  (keys db/named-queries)))))))})
 
 (def type-selector
   (selector/selector {:items (fn []
