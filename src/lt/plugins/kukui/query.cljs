@@ -55,20 +55,21 @@
         ;; TODO: Add support for ->
         (s/replace (str f) "-" "_")))
 
-(defn execute-query [default-executor query args]
-  ;; TODO: make executor configurable based on query metadata.
-  ;; Currently, a query executor exists if a fn of the same exists
-  ;; in lt.plugins.kukui.db
-  (if-let [executor (some->> query
-                             (get (cset/map-invert db/named-queries))
-                             (resolve-fn lt.plugins.kukui.db))]
-    ;; TODO: make post-executor configurable based on query metadata
-    (map (fn [[k v]] [k [v]])
-         (apply executor args))
-    (apply default-executor query args)))
+(defn execute-query
+  ([query args default-executor] (execute-query query args default-executor identity))
+  ([query args default-executor post-executor]
+   ;; TODO: make executor configurable based on query metadata.
+   ;; Currently, a query executor exists if a fn of the same exists
+   ;; in lt.plugins.kukui.db
+   (if-let [executor (some->> query
+                              (get (cset/map-invert db/named-queries))
+                              (resolve-fn lt.plugins.kukui.db))]
+     ;; TODO: make post-executor configurable based on query metadata
+     (post-executor (apply executor args))
+     (apply default-executor query args))))
 
 (defn find-one-query->nodes [query args]
-  (let [ents (apply d/qe query db/rules args)
+  (let [ents (execute-query query args #(apply d/qe %1 db/rules %2))
         id->name (cset/map-invert (db/name-id-map))]
     (vec (mapcat #(ent->nodes % 1 id->name) ents))))
 
@@ -78,7 +79,8 @@
        (map (fn [[k pairs]] [k (map second pairs)]))))
 
 (defn find-two-query->nodes [query args]
-  (let [results (execute-query default-second-executor query args)
+  (let [post-executor #(map (fn [[k v]] [k [v]]) %)
+        results (execute-query query args default-second-executor post-executor)
         id->name (cset/map-invert (db/name-id-map))]
     (vec (mapcat (fn [[group-key ents]]
                    (into [{:text group-key :level 1}]
