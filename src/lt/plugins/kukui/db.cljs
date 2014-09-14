@@ -42,6 +42,7 @@
 
 (def named-queries
   "Named datalog queries - used mostly by query cmds"
+  ;; entities grouped by tag and possibly other attributes
   {'ent-by-type  '[:find ?type ?e
                    :in $ % ?input-tag
                    :where (tagged-with ?e ?input-tag) [?e :type ?type]]
@@ -51,27 +52,12 @@
               [?e :type "td"]
               (tagged-ent-with ?e ?t1 ?tag-name) [?t1 :type "priority"]
               (tagged-with ?e ?input-tag)]
-   'types-names '[:find ?type ?name
-                  :where
-                  [?children :type ?type]
-                  [?children :name ?name]]
-   'tagged-tags  '[:find ?tag1 ?tag2
-                   :in $ %
-                   :where
-                   (tagged-ent-with _ ?t1 ?tag1) (tagged-with ?t1 ?tag2)]
-   'named-ents '[:find ?n ?e
-                 :where [?e :name ?n]]
-   'url-ents '[:find ?url ?e
-               :where [?e :url ?url]]
    'ent-by-tags '[:find ?tag ?e
                   :in $ % ?input-tag
                   :where (tagged-with ?e ?input-tag) (tagged-with ?e ?tag)]
-   'search-attr '[:find ?e
-                  :in $ % ?search-fn ?attr ?query
-                  :where [?e ?attr ?val] [(?search-fn ?query ?val)]]
-   'search-all-attr '[:find ?e
-                      :in $ % ?search-fn ?query
-                      :where [?e _ ?val] [(?search-fn ?query ?val)]]
+   'or-tags '[:find ?input-tag ?e
+              :in $ % [?input-tag ...]
+              :where (tagged-with ?e ?input-tag)]
    'ent-by-tags-of-type '[:find ?tag-name ?e
                           :in $ % ?input-tag ?input-type
                           :where
@@ -82,12 +68,35 @@
                             :where
                             (tagged-ent-with ?e ?t1 ?tag-name) [?t1 :type ?input-type]
                             (lines ?e ?file ?first ?last)]
-   'or-tags '[:find ?input-tag ?e
-              :in $ % [?input-tag ...]
-              :where (tagged-with ?e ?input-tag)]
+
+   ;; entities grouped by an attribute value
+   'named-ents '[:find ?n ?e
+                 :where [?e :name ?n]]
+   'url-ents '[:find ?url ?e
+               :where [?e :url ?url]]
    'or-ents '[:find ?input-name ?e
               :in $ % [?input-name ...]
               :where [?e :name ?input-name]]
+
+   ;; tag-analysis
+   'types-names '[:find ?type ?name
+                  :where
+                  [?children :type ?type]
+                  [?children :name ?name]]
+   'tagged-tags  '[:find ?tag1 ?tag2
+                   :in $ %
+                   :where
+                   (tagged-ent-with _ ?t1 ?tag1) (tagged-with ?t1 ?tag2)]
+
+   ;; search
+   'search-attr '[:find ?e
+                  :in $ % ?search-fn ?attr ?query
+                  :where [?e ?attr ?val] [(?search-fn ?query ?val)]]
+   'search-all-attr '[:find ?e
+                      :in $ % ?search-fn ?query
+                      :where [?e _ ?val] [(?search-fn ?query ?val)]]
+
+   ;; counts
    'all-attr-counts '[:find ?val (count ?e)
                       :in $ ?attr
                       :where
