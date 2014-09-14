@@ -1,6 +1,7 @@
 (ns lt.plugins.kukui.db
   "In-memory DB for nodes, types and things"
-  (:require [lt.plugins.kukui.datascript :as d]))
+  (:require [lt.plugins.kukui.datascript :as d]
+            [clojure.string :as s]))
 
 (def unknown-type "Default type if none specified" "unknown")
 (def root-type "type")
@@ -55,9 +56,9 @@
    'ent-by-tags '[:find ?tag ?e
                   :in $ % ?input-tag
                   :where (tagged-with ?e ?input-tag) (tagged-with ?e ?tag)]
-   'or-tags '[:find ?input-tag ?e
-              :in $ % [?input-tag ...]
-              :where (tagged-with ?e ?input-tag)]
+   'by-or-tags '[:find ?input-tag ?e
+                 :in $ % [?input-tag ...]
+                 :where (tagged-with ?e ?input-tag)]
    'ent-by-tags-of-type '[:find ?tag-name ?e
                           :in $ % ?input-tag ?input-type
                           :where
@@ -68,6 +69,15 @@
                             :where
                             (tagged-ent-with ?e ?t1 ?tag-name) [?t1 :type ?input-type]
                             (lines ?e ?file ?first ?last)]
+
+   ;; just entities
+   '
+   'ent-by-tag-and-type  '[:find ?e
+                           :in $ % ?input-tag ?ent-type
+                           :where (tagged-with ?e ?input-tag) [?e :type ?ent-type]]
+   'or-tags '[:find ?e
+              :in $ % [?input-tag ...]
+              :where (tagged-with ?e ?input-tag)]
 
    ;; entities grouped by an attribute value
    'named-ents '[:find ?n ?e
@@ -107,7 +117,10 @@
                               [?e ?attr ?val]]
    'tag-counts '[:find ?tag (count ?e)
                  :in $ %
-                 :where (tagged-with ?e ?tag)]})
+                 :where (tagged-with ?e ?tag)]
+
+   ;; placeholder - queries that provide :find arity and map to fn
+   'tag-search '[:find ?e :where [?e :placeholder]]})
 
 (defn name-id-map []
   (into {} (d/q ('named-ents named-queries))))
@@ -248,6 +261,26 @@
      :tags (->> things (mapcat :tags) count)
      :names (->> things (filter :name) count)
      :urls (->> things (filter :url) count)}))
+
+(defn and-tags
+  "AND search for given tags"
+  [tags]
+  (d/qe (concat '[:find ?e :in $ % :where]
+                (map #(list 'tagged-with '?e %) tags))
+        rules))
+
+(defn tag-search [search-term]
+  (cond
+   (.contains search-term ".")
+   (let [[type tag] (js->clj (.split search-term "."))]
+    (d/qe ('ent-by-tag-and-type named-queries) rules tag type))
+
+   (.contains search-term "+")
+   (and-tags (s/split search-term #"\+"))
+
+   :else
+   (d/qe ('or-tags named-queries) rules
+         (s/split search-term #"\s+"))))
 
 ;; Validations
 ;; ===========
