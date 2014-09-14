@@ -232,6 +232,14 @@
        (map (fn [[type pairs]]
               {:type type :names (map second pairs)}))))
 
+(defn thing-stats []
+  (let [things (d/qe '[:find ?e :where [?e]])]
+    {:things (count things)
+     :types (->> things (mapcat :type) distinct count)
+     :tags (->> things (mapcat :tags) count)
+     :names (->> things (filter :name) count)
+     :urls (->> things (filter :url) count)}))
+
 ;; Validations
 ;; ===========
 (defn must-have-unique-name [entities]

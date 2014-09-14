@@ -17,6 +17,9 @@
             [lt.plugins.kukui.datascript :as d]
             [lt.plugins.sacha.codemirror :as c]))
 
+;; Count cmds
+;; ==========
+
 (defn db->nodes
   ([ed] (db->nodes ed (util/current-lines ed)))
   ([ed lines] (sort-by :line
@@ -74,6 +77,14 @@
               :desc "kukui: Same as types-counts but for all files"
               :exec all-types-counts})
 
+(cmd/command {:command :kukui.thing-stats
+              :desc "kukui: Stats for overall thing counts"
+              :exec (fn []
+                      (prn (db/thing-stats)))})
+
+;; Misc commands
+;; =============
+
 (cmd/command {:command :kukui.live-debug-nodes
               :desc "kukui: prints nodes for current branch or selection"
               :exec (fn []
@@ -83,9 +94,6 @@
               :desc "kukui: prints db nodes for current branch or selection"
               :exec (fn []
                       (util/pprint (db->nodes (pool/last-active))))})
-
-;; Misc commands
-;; =============
 
 (defn replace-children [ed view-fn]
   (let [end-line (c/safe-next-non-child-line ed (.-line (editor/cursor ed)))

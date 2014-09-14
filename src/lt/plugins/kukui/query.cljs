@@ -106,8 +106,9 @@
     (when-let [query (named-query db/named-queries)]
       (into [query] args))))
 
-(def query-aliases {'search "search-all-attr #fn re-find"
-                    'ebt "ent-by-type"})
+(def query-aliases {'sos "search-all-attr #fn re-find"
+                    'ebt "ent-by-type"
+                    'son  "search-attr #fn re-find :name"})
 
 (defn aliased-query [input]
   (let [input-dt (reader/read-string input)
