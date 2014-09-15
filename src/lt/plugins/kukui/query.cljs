@@ -69,7 +69,7 @@
      (apply default-executor query args))))
 
 (defn find-one-query->nodes [query args]
-  (let [ents (execute-query query args #(apply d/qe %1 db/rules %2))
+  (let [ents (execute-query query args (fn [q & args] (apply d/qe q db/rules args)))
         id->name (cset/map-invert (db/name-id-map))]
     (vec (mapcat #(ent->nodes % 1 id->name) ents))))
 
