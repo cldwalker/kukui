@@ -78,6 +78,8 @@
    'or-tags '[:find ?e
               :in $ % [?input-tag ...]
               :where (tagged-with ?e ?input-tag)]
+   'ent-for-name '[:find ?e :in $ % ?input-tag :where [?e :name ?input-tag]]
+   'ent-for-type '[:find ?e :in $ % ?input-tag :where [?e :type ?input-tag]]
 
    ;; entities grouped by an attribute value
    'named-ents '[:find ?n ?e

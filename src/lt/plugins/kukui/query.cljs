@@ -109,8 +109,10 @@
       (into [query] args))))
 
 (def query-aliases {'sos "search-all-attr #fn re-find"
-                    'ebt "ent-by-type"
-                    'son  "search-attr #fn re-find :name"})
+                    'sot "ent-by-type"
+                    'son "search-attr #fn re-find :name"
+                    'sn "ent-for-name"
+                    'st "ent-for-type"})
 
 (defn aliased-query [input]
   (let [input-dt (reader/read-string input)
