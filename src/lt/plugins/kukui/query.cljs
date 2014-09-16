@@ -119,15 +119,10 @@
       (s/replace-first input #"^\s*\(\S+" (str "(" expansion)))))
 
 (defn input->query-and-args [input]
-  (let [input (or (aliased-query input) input)
-        named-query-args (fn-string->query-args input)]
-    (cond
-     named-query-args named-query-args
-     ;; Full query detected
-     (re-find #"^\s*\[:find" input) [(reader/read-string input)]
-     ;; If not full-query, assume :where for entity query
-     :else [(reader/read-string
-             (str "[:find ?e :in $ % :where " input "]"))])))
+  (let [input (or (aliased-query input) input)]
+    (or
+     (fn-string->query-args input)
+     [(reader/read-string input)])))
 
 (def query-history (atom []))
 

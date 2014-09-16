@@ -120,7 +120,8 @@
                  :where (tagged-with ?e ?tag)]
 
    ;; placeholder - queries that provide :find arity and map to fn
-   'tag-search '[:find ?e :where [?e :placeholder]]})
+   'tag-search '[:find ?e :where [?e :tag-search]]
+   'qe '[:find ?e :where [?e :qe]]})
 
 (defn name-id-map []
   (into {} (d/q ('named-ents named-queries))))
@@ -281,6 +282,13 @@
    :else
    (d/qe ('or-tags named-queries) rules
          (s/split search-term #"\s+"))))
+
+(defn qe
+  "Given where clauses, returns entities bound to ?e"
+  [& wheres]
+  (d/qe
+   (concat '[:find ?e :in $ % :where] wheres)
+   rules))
 
 ;; Validations
 ;; ===========
