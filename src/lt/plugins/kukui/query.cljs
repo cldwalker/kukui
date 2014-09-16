@@ -105,7 +105,7 @@
   (tag1-type2 'kukui') => [:tag1-type2-query 'kukui']"
   [query-string]
   (let [[named-query & args] (reader/read-string query-string)]
-    (when-let [query (named-query db/named-queries)]
+    (when-let [query (get db/named-queries named-query)]
       (into [query] args))))
 
 (def query-aliases {'sos "search-all-attr #fn re-find"
@@ -122,7 +122,8 @@
   (let [input (or (aliased-query input) input)]
     (or
      (fn-string->query-args input)
-     [(reader/read-string input)])))
+     ;; Default to full queries e.g. [:find ?e :where [?e :name "blarg"]]
+     (vec (reader/read-string input)))))
 
 (def query-history (atom []))
 
@@ -139,7 +140,9 @@
     path))
 
 (defn input->path [ed input]
-  (let [query-and-args (input->query-and-args input)
+  (let [input (if (.startsWith input "(")
+                input (str "(" input ")"))
+        query-and-args (input->query-and-args input)
         nodes (apply query->nodes query-and-args)]
     (nodes->path ed nodes input)))
 
