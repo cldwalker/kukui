@@ -71,7 +71,6 @@
                             (lines ?e ?file ?first ?last)]
 
    ;; just entities
-   '
    'ent-by-tag-and-type  '[:find ?e
                            :in $ % ?input-tag ?ent-type
                            :where (tagged-with ?e ?input-tag) [?e :type ?ent-type]]
