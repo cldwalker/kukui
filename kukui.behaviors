@@ -1,1 +1,3 @@
-{:+ {:app [(:lt.objs.plugins/load-js "kukui_compiled.js")]}}
+{:+ {:app [(:lt.objs.plugins/load-js "kukui_compiled.js")]
+     :editor.otl [:lt.plugins.kukui.auto-complete/use-local-hints
+                  :lt.plugins.kukui.auto-complete/add-hint-pattern]}}
