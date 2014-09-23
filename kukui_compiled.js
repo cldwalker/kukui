@@ -4114,10 +4114,14 @@ return lt.plugins.kukui.query.add_ids_to_query_file;
 }),new cljs.core.Keyword(null,"placeholder","placeholder",1612151013),"query",new cljs.core.Keyword(null,"completions","completions",1416465289),cljs.core.sort.call(null,cljs.core.concat.call(null,cljs.core.map.call(null,new cljs.core.Keyword(null,"input","input",1114262332),cljs.core.deref.call(null,lt.plugins.kukui.query.query_history)),cljs.core.map.call(null,(function (p1__9138_SHARP_){return ("("+cljs.core.str.cljs$core$IFn$_invoke$arity$1(p1__9138_SHARP_));
 }),cljs.core.concat.call(null,cljs.core.keys.call(null,lt.plugins.kukui.query.query_aliases),cljs.core.keys.call(null,lt.plugins.kukui.db.named_queries))))));
 })], null));
-lt.plugins.kukui.query.type_selector = lt.plugins.kukui.selector.selector.call(null,new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"items","items",1114430258),(function (){var ed = lt.objs.editor.pool.last_active.call(null);return cljs.core.sort_by.call(null,new cljs.core.Keyword(null,"name","name",1017277949),cljs.core.map.call(null,((function (ed){
+lt.plugins.kukui.query.type_selector = lt.plugins.kukui.selector.selector.call(null,new cljs.core.PersistentArrayMap(null, 2, [new cljs.core.Keyword(null,"items","items",1114430258),(function (){var temp__4126__auto__ = lt.objs.editor.pool.last_active.call(null);if(cljs.core.truth_(temp__4126__auto__))
+{var ed = temp__4126__auto__;return cljs.core.sort_by.call(null,new cljs.core.Keyword(null,"name","name",1017277949),cljs.core.map.call(null,((function (ed,temp__4126__auto__){
 return (function (p1__9139_SHARP_){return cljs.core.PersistentHashMap.fromArrays.call(null,[new cljs.core.Keyword(null,"name","name",1017277949)],[p1__9139_SHARP_]);
-});})(ed))
+});})(ed,temp__4126__auto__))
 ,lt.plugins.kukui.db.local_tag_types.call(null,lt.plugins.kukui.util.current_file.call(null,ed),lt.plugins.kukui.util.current_lines.call(null,ed))));
+} else
+{return null;
+}
 }),new cljs.core.Keyword(null,"key","key",1014010321),new cljs.core.Keyword(null,"name","name",1017277949)], null));
 lt.plugins.kukui.query.add_leftover_nodes = (function add_leftover_nodes(existing_nodes,original_nodes){var existing_text = cljs.core.set.call(null,cljs.core.map.call(null,new cljs.core.Keyword(null,"text","text",1017460895),existing_nodes));var leftover_nodes = cljs.core.remove.call(null,((function (existing_text){
 return (function (p1__9140_SHARP_){return cljs.core.contains_QMARK_.call(null,existing_text,new cljs.core.Keyword(null,"text","text",1017460895).cljs$core$IFn$_invoke$arity$1(p1__9140_SHARP_));

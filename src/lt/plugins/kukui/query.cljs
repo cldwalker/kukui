@@ -180,7 +180,7 @@
 
 (def type-selector
   (selector/selector {:items (fn []
-                               (let [ed (pool/last-active)]
+                               (when-let [ed (pool/last-active)]
                                  (sort-by :name
                                           (map #(hash-map :name %)
                                                (db/local-tag-types (util/current-file ed)
