@@ -46,7 +46,7 @@
     (throw (ex-info (str "Following rules are invalid: " invalid) {}))))
 
 (defn q [query & args]
-  (assert (or (map? query) (vector? query)))
+  (assert (or (map? query) (sequential? query)))
   (lint-rules query args)
   (apply d/q query @conn args))
 
