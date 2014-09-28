@@ -25,10 +25,9 @@
 (behavior ::add-hint-pattern
           :triggers #{:object.instant}
           :reaction (fn [editor]
-                      (lt.object/merge! editor
-                                        {:hint-pattern
-                                         (re-pattern (str "[^" kc/disallowed-tag-chars "]"))})))
-
+                      (object/merge! editor
+                                     {:hint-pattern
+                                      (re-pattern (str "[^" kc/disallowed-tag-chars "]"))})))
 
 (comment
 
