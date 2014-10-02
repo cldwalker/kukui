@@ -186,8 +186,12 @@
                                           {:class "error"})))})
 
 (defn ->semtag-name [thing]
-  (cond (seq (:alias thing)) (:alias thing)
-        (seq (:name thing)) (:name thing)))
+  (when (seq (:name thing))
+    (:name thing)))
+
+(defn ->semtag-alias [thing]
+  (when (seq (:alias thing))
+    (:alias thing)))
 
 (defn ->ent [->id id->name updated-names thing]
   (cond-> {:db/id (->id (:id thing))
@@ -199,7 +203,10 @@
           (seq (:url thing)) (assoc :url (:url thing))
           (let [name (->semtag-name thing)]
             (and (seq name) (not (contains? updated-names name))))
-          (assoc :name (->semtag-name thing))))
+          (assoc :name (->semtag-name thing))
+          (let [alias (->semtag-alias thing)]
+            (and (seq alias) (not (contains? updated-names alias))))
+          (assoc :alias (->semtag-alias thing))))
 
 (defn import-semtag-data []
   (let [things (->
@@ -213,15 +220,18 @@
                         :types (map (comp - :db/id) (:types thing))
                         :tags (map (comp - :db/id) (:tags thing))))
                     things)
+        ;; map of import ids to names
         id->name (into {}
                        (keep #(when-let [n (->semtag-name %)]
                                 [(:id %) n]) things))
-        existing-names (db/name-id-map)
+        existing-names (db/any-name-id-map)
         updated-names (cset/intersection (set (keys existing-names)) (set (vals id->name)))
-        _ (prn "Following names already exist but will thave their type updated:" updated-names)
+        _ (prn "Following names already exist but will have their type updated:" updated-names)
+        ;; maps name to db id
         ->id #(if (contains? updated-names (id->name %))
                 (-> % id->name existing-names)
                 %)
+        ;; converts import entities to local entities
         entities (map (partial ->ent ->id id->name updated-names) things)]
     (println "Saving" (count entities) "entities," (count (mapcat :tags entities)) "tags...")
     (-> entities

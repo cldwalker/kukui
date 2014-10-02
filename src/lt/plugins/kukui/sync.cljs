@@ -23,7 +23,7 @@
 (defn expand-tags [entities]
   (let [new-tags (atom {})
         entities (map #(assoc % :db/id (d/tempid)) entities)
-        tag-id (partial ->tag-id entities (db/name-id-map) new-tags)
+        tag-id (partial ->tag-id entities (db/any-name-id-map) new-tags)
         entities-with-tags (doall
                             (->> entities
                                  (mapcat (fn [ent]
@@ -40,6 +40,8 @@
   (let [existing-types (cset/union
                         (set (d/qf '[:find ?name
                                      :where [?e :type "type"] [?e :name ?name]]))
+                        (set (d/qf '[:find ?name
+                                     :where [?e :type "type"] [?e :alias ?name]]))
                         (set (d/qf '[:find ?type
                                      :where [?e :type ?type]])))]
     (->> entities
@@ -84,7 +86,7 @@
   (nodes-must-not-have-text-dupes nodes1)
   (let [old-nodes (into {} (map (juxt :text identity) nodes1))
         ;; Pulling names from nodes1 has too many edge cases - just use existing
-        name-ids (db/name-id-map)
+        name-ids (db/any-name-id-map)
         url-ids (into {} (d/q ('url-ents db/named-queries)))
         changes {:deleted (cset/difference (set nodes1) (set nodes2))}]
     (reduce
@@ -219,7 +221,7 @@
      (when (not= (:tags orig) (:tags ent))
        (let [remove-tags (cset/difference (:tags orig) (:tags ent))
               add-tags (cset/difference (:tags ent) (:tags orig))
-              name->id (db/name-id-map)
+              name->id (db/any-name-id-map)
               tag-id (partial ->tag-id [] name->id new-tags)]
           (concat
            (map #(hash-map :db/id (:id ent) :tags (tag-id %)) add-tags)

@@ -15,26 +15,33 @@
      [?e :line ?line]
      [(<= ?first-line ?line ?last-line)]]])
 
+(def name-or-alias-rule
+  '[[(name-or-alias ?e ?name)
+     [?e :name ?name]]
+    [(name-or-alias ?e ?name)
+     [?e :alias ?name]]])
+
 (def tag-names-rule
   '[[(tag-names ?e ?name)
      [?e :tags ?tag]
-     [?tag :name ?name]]
+     (name-or-alias ?tag ?name)]
     ;; Allow untagged entities to match
     [(tag-names _ _)]])
 
 (def tagged-with-rule
   '[[(tagged-with ?e ?name)
      [?e :tags ?tag]
-     [?tag :name ?name]]])
+     (name-or-alias ?tag ?name)]])
 
 (def tagged-ent-with-rule
   '[[(tagged-ent-with ?e ?tag ?tag-name)
      [?e :tags ?tag]
-     [?tag :name ?tag-name]]])
+     (name-or-alias ?tag ?tag-name)]])
 
 (def rules
   (concat lines-rule
           tag-names-rule
+          name-or-alias-rule
           tagged-with-rule
           tagged-ent-with-rule))
 
@@ -77,17 +84,19 @@
    'or-tags '[:find ?e
               :in $ % [?input-tag ...]
               :where (tagged-with ?e ?input-tag)]
-   'ent-for-name '[:find ?e :in $ % ?input-tag :where [?e :name ?input-tag]]
+   'ent-for-name '[:find ?e :in $ % ?input-tag :where (name-or-alias ?e ?input-tag)]
    'ent-for-type '[:find ?e :in $ % ?input-tag :where [?e :type ?input-tag]]
 
    ;; entities grouped by an attribute value
    'named-ents '[:find ?n ?e
                  :where [?e :name ?n]]
+   'aliased-ents '[:find ?n ?e
+                   :where [?e :alias ?n]]
    'url-ents '[:find ?url ?e
                :where [?e :url ?url]]
    'or-ents '[:find ?input-name ?e
               :in $ % [?input-name ...]
-              :where [?e :name ?input-name]]
+              :where (name-or-alias ?e ?input-name)]
 
    ;; tag-analysis
    'types-names '[:find ?type ?name
@@ -124,8 +133,16 @@
    'tag-search '[:find ?e :where [?e :tag-search]]
    'qe '[:find ?e :where [?e :qe]]})
 
-(defn name-id-map []
+(defn name-id-map
+  "Returns one-to-one map of names to ids"
+  []
   (into {} (d/q ('named-ents named-queries))))
+
+(defn any-name-id-map
+  "Returns map of names or aliases to ids"
+  []
+  (merge (into {} (d/q ('aliased-ents named-queries)))
+         (name-id-map)))
 
 (defn find-by-file-and-line [file line]
   (first
@@ -293,21 +310,26 @@
 
 ;; Validations
 ;; ===========
-(defn must-have-unique-name [entities]
-  (let [existing-tags (name-id-map)
-        names (set (keys existing-tags))
-        invalid (filter #(and (:name %) (contains? names (:name %))) entities)
+(defn must-have-unique-attribute [entities existing-fn attr]
+  (let [existing-values (existing-fn)
+        invalid (filter #(and (attr %) (contains? existing-values (attr %))) entities)
         invalid (->> entities
-                     (filter :name)
-                     (group-by :name)
+                     (filter attr)
+                     (group-by attr)
                      vals
                      (mapcat #(when (> (count %) 1) %))
                      (into invalid))]
     (when (seq invalid)
       (prn "INVALID" invalid)
-      (throw (ex-info (str "Names must be unique: " (map :name invalid))
-                      {:names (map :name invalid)})))
+      (throw (ex-info (str attr " must be unique: " (map attr invalid))
+                      {:invalid (map attr invalid)})))
     entities))
+
+(def must-have-unique-name
+  #(must-have-unique-attribute % (comp set keys any-name-id-map) :name))
+
+(def must-have-unique-alias
+  #(must-have-unique-attribute % (comp set keys any-name-id-map) :alias))
 
 (defn must-have-string-name [entities]
   (when-let [invalid (->> entities
@@ -346,6 +368,7 @@
 (defn validate [entities]
   (-> entities
       must-have-unique-name
+      must-have-unique-alias
       must-have-string-name
       must-require-type
       must-have-unique-url))
@@ -382,6 +405,12 @@
                    [?e :type ?type]
                    [?t :name ?tag]]))
 
+  (d/qe '[:find ?e :where [?e :alias "cjar"]])
+  (map (juxt :name :alias) (d/qe '[:find ?e :where [?e :alias]]))
+  (d/transact! [{:db/id 2 :alias "un"}])
+  (validate [{:db/id -10 :name "unknown2" :alias "un" :type "whoop"}])
+  (d/q ('or-ents named-queries) rules ["un"])
+  (count (any-name-id-map))
 
   ;; delete attr
   (d/transact! [:db/retract 2 :tags 4])
