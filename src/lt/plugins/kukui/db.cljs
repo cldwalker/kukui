@@ -108,6 +108,9 @@
                    :where
                    (tagged-ent-with _ ?t1 ?tag1) (tagged-with ?t1 ?tag2)]
 
+   ;; other
+   'aliased-names '[:find ?alias ?name :where [?e :alias ?alias] [?e :name ?name]]
+
    ;; search
    'search-attr '[:find ?e
                   :in $ % ?search-fn ?attr ?query
@@ -132,6 +135,10 @@
    ;; placeholder - queries that provide :find arity and map to fn
    'tag-search '[:find ?e :where [?e :tag-search]]
    'qe '[:find ?e :where [?e :qe]]})
+
+(defn alias-name-map
+  []
+  (into {} (d/q ('aliased-names named-queries))))
 
 (defn name-id-map
   "Returns one-to-one map of names to ids"
@@ -405,7 +412,6 @@
                    [?e :type ?type]
                    [?t :name ?tag]]))
 
-  (d/qe '[:find ?e :where [?e :alias "cjar"]])
   (map (juxt :name :alias) (d/qe '[:find ?e :where [?e :alias]]))
   (d/transact! [{:db/id 2 :alias "un"}])
   (validate [{:db/id -10 :name "unknown2" :alias "un" :type "whoop"}])

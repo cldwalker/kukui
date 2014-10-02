@@ -175,6 +175,9 @@
 
 (defn sync [nodes file]
   (let [nodes (filter #(not (re-find #"^\s*$" (:text %))) nodes)
+        alias->name (db/alias-name-map)
+        nodes (map #(assoc %
+                      :type (or (alias->name (:type %)) (:type %))) nodes)
         {:keys [added deleted updated]} (sync-entities nodes file)]
     (println "Added/deleted/updated: "
              (count added) "/"
