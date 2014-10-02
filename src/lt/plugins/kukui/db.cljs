@@ -291,6 +291,7 @@
      :types (->> things (mapcat :type) distinct count)
      :tags (->> things (mapcat :tags) count)
      :names (->> things (filter :name) count)
+     :aliases (->> things (filter :alias) count)
      :urls (->> things (filter :url) count)}))
 
 (defn and-tags
@@ -417,7 +418,7 @@
                    [?e :type ?type]
                    [?t :name ?tag]]))
 
-  (map (juxt :name :alias) (d/qe '[:find ?e :where [?e :alias]]))
+  (sort-by count (d/qf '[:find ?name :where [?e :name ?name]]))
   (d/transact! [{:db/id 2 :alias "un"}])
   (validate [{:db/id -10 :name "unknown2" :alias "un" :type "whoop"}])
   (d/q ('or-ents named-queries) rules ["un"])
