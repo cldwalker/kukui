@@ -151,6 +151,11 @@
   (merge (into {} (d/q ('aliased-ents named-queries)))
          (name-id-map)))
 
+;; Remove aliasing support once types are refs
+(defn ent-for-type [input-type]
+  (d/qe ('ent-for-type named-queries) rules
+        (or (get (alias-name-map) input-type) input-type)))
+
 (defn find-by-file-and-line [file line]
   (first
    (d/qe '[:find ?e
